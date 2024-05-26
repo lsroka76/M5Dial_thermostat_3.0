@@ -44,6 +44,8 @@
 
 // Supla section
 
+#define USE_HARDCODED_DATA
+
 Supla::Eeprom eeprom;
 
 
@@ -64,6 +66,7 @@ Supla::Control::Multi_VirtualRelay *PDstep_mvr;
 Supla::Control::HvacBase *M5Dial_hvac;
 
 #define MAX_SENSORS 9
+#define THT_OUTPUT_PIN 2
 
 Supla::Sensor::XiaomiThermHygroMeter *xiaomiSensors[MAX_SENSORS];
 Supla::Sensor::XiaomiCalcThermHygroMeter *hvac_therm;
@@ -85,7 +88,11 @@ NimBLEClient *pClient;
 #define MENU_ANGLE 36
 #define MENU_OFFSET 166
 
-const static char* menu_labels[MENU_ITEMS] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA °C","AKTYWNY \n EKRAN GŁÓWNY","TIMER CZAS","HISTEREZA °C","PROGRAM","STATUS","CZUJNIKI","WYJŚCIE"};
+const static char* menu_labels1[MENU_ITEMS] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
+const static char* menu_labels2[MENU_ITEMS] PROGMEM = { "- TRYBY","ON/OFF","TEMPERATURY","EKRAN","CZASU","HISTEREZY","PROGRAMU","","","GŁÓWNY"};
+const static char* menu_labels3[MENU_ITEMS] PROGMEM = { "","","(°C)","GŁÓWNY","TIMERA","(°C)","","","",""};
+
+const static byte menu_lines[MENU_ITEMS] PROGMEM = {2,2,3,3,3,3,2,1,1,2};
 
 static constexpr const char* const week_days[7] = {"ND", "PN", "WT", "ŚR","CZ", "PT", "SB"};
 
@@ -105,7 +112,7 @@ bool nm_config_mode = false;
 
 bool ms_tht_change = true;
 
-time_t tht_timer = 1;
+time_t tht_timer = 0;
 
 m5::touch_state_t touch_prev_state;
 
@@ -136,7 +143,9 @@ const static char *LOCS_PARAMS[] PROGMEM = {
   "loc#9" };
 
 
-const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {  
+#ifdef USE_HARDCODED_DATA
+
+ const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {  
 {"A4:C1:38:63:D1:8D","lokalizacja 1"},
 {"A4:C1:38:19:74:38","lokalizacja 2"},
 {"A4:C1:38:9C:6C:1D","lokalizacja 3"},
@@ -144,6 +153,8 @@ const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {
 {"A4:C1:38:75:50:F7","lokalizacja 5"},
 {"A4:C1:38:CB:AC:94","lokalizacja 6"}
 };
+
+#endif //USE_HARDCODED_DATA
 
 char  xiaomiBleDeviceMacs[MAX_SENSORS][18];
 char  xiaomiBleDeviceLocs[MAX_SENSORS][32];
@@ -186,7 +197,6 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
       macAddress.toUpperCase();
       for (int i = 0; i < Sensors_cnt; i++) {
         if (macAddress == xiaomiBleDeviceMacs[i]) {
-          //current_temperature = (float)((strServiceData[7] | (strServiceData[6] << 8)) * 0.1);  //dodać obsługę ujemnych
           int16_t rawTemperature = (strServiceData[7] | (strServiceData[6] << 8));
           float current_temperature = rawTemperature * 0.1;
           byte current_humidity = (float)(strServiceData[8]);
@@ -214,9 +224,13 @@ Supla::Sensor::DisplayAH *THT_dah;
 
 void setup() {
   
+  #ifdef USE_HARDCODED_DATA
+
   char USER_GUID[SUPLA_GUID_SIZE] = {0x8C,0xAF,0x8D,0x68,0x47,0x14,0x52,0xA9,0x94,0xF2,0xF1,0xAB,0xE5,0xA0,0xCF,0xA0};
   char USER_AUTH_KEY[SUPLA_AUTHKEY_SIZE] = {0xCE,0x70,0x03,0x93,0x53,0xCD,0x41,0x12,0xFF,0x7D,0xC2,0x97,0x49,0x56,0x9E,0x63};
   
+  #endif
+
   Serial.begin(115200);
  
   Wire.begin();
@@ -240,6 +254,8 @@ void setup() {
 
   auto cfg = Supla::Storage::ConfigInstance();
   
+  #ifdef USE_HARDCODED_DATA
+
   if (cfg) {
     
     char buf[100];
@@ -270,7 +286,11 @@ void setup() {
     }
   }
 
+#endif //USE_HARDCODED_DATA
+
   if (cfg) {
+
+    cfg->getInt32(XIAOMI_CNT, &Sensors_cnt);
 
     for (int j = 0; j < Sensors_cnt; j++) {
       cfg->getString(XIAOMI_PARAMS[j],xiaomiBleDeviceMacs[j],18);
@@ -298,7 +318,7 @@ void setup() {
   pBLEScan->setWindow(37);  // How long to scan during the interval; in milliseconds.
   pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
   
-  auto output = new Supla::Control::InternalPinOutput(2);
+  auto output = new Supla::Control::InternalPinOutput(THT_OUTPUT_PIN);
 
   M5Dial_hvac = new Supla::Control::HvacBase(output);
   
@@ -623,7 +643,21 @@ void drawMenu1(){
       canvas.fillArc(120,120,90,99,0,360,TFT_GREEN); //TFT_VIOLET);
       canvas.setTextColor(TFT_WHITE);
       canvas.fillCircle(120, 120, 89, TFT_NAVY);
-      canvas.drawString(menu_labels[nm_menu_position], 120, 120);
+      switch (menu_lines[nm_menu_position]) {
+        case 1:
+          canvas.drawString(menu_labels1[nm_menu_position], 120, 120);
+        break;
+        case 2:
+          canvas.drawString(menu_labels1[nm_menu_position], 120, 100);
+          canvas.drawString(menu_labels2[nm_menu_position], 120, 140);
+        break;
+        case 3:
+          canvas.drawString(menu_labels1[nm_menu_position], 120, 80);
+          canvas.drawString(menu_labels2[nm_menu_position], 120, 120);
+          canvas.drawString(menu_labels3[nm_menu_position], 120, 160);
+        break;
+      }
+      
       canvas.pushSprite(0,0);
 }
 
@@ -632,7 +666,7 @@ void drawMenu2(long selector){
       canvas.setTextColor(TFT_WHITE); 
       canvas.fillCircle(120,120,100,TFT_NAVY); 
       
-      canvas.drawString(menu_labels[selector], 120, 80);     
+      canvas.drawString(menu_labels1[selector], 120, 80);     
         switch (selector){
         case 0:
           nm_menu_max = 2;
@@ -650,7 +684,7 @@ void drawMenu2(long selector){
           nm_menu_max = 1;
           if (nm_position_delta > 0) M5Dial_hvac->handleAction(0, Supla::INCREASE_HEATING_TEMPERATURE);
           if (nm_position_delta < 0) M5Dial_hvac->handleAction(0, Supla::DECREASE_HEATING_TEMPERATURE);
-          nm_drawTempScaleGauge(M5Dial_hvac->getTemperatureSetpointHeat(), M5Dial_hvac->getDefaultTemperatureRoomMin(),M5Dial_hvac->getDefaultTemperatureRoomMax());
+          nm_drawTempScaleGauge("TEMPERATURA",M5Dial_hvac->getTemperatureSetpointHeat(), M5Dial_hvac->getDefaultTemperatureRoomMin(),M5Dial_hvac->getDefaultTemperatureRoomMax());
           break;  
         case 3:
           nm_menu_max = 1;
@@ -659,15 +693,15 @@ void drawMenu2(long selector){
           break;
         case 4:
           nm_menu_max  = 0;
-          if (nm_position_delta > 0) tht_timer++;
-          if (nm_position_delta < 0) tht_timer--;
-          if (tht_timer < 2) tht_timer = 2;
-          nm_drawScaleGauge(tht_timer,0,180);
+          if (nm_position_delta > 0) tht_timer += 15;
+          if (nm_position_delta < 0) tht_timer -= 15;
+          if (tht_timer < 0) tht_timer = 0;
+          nm_drawScaleGauge("TIMER", "minuty", tht_timer,0,1440);
           break;
         case 5:
           if (nm_position_delta > 0) M5Dial_hvac->setTemperatureHisteresis(M5Dial_hvac->getTemperatureHisteresis() + 10);
           if (nm_position_delta < 0) M5Dial_hvac->setTemperatureHisteresis(M5Dial_hvac->getTemperatureHisteresis() - 10);
-          nm_drawTempScaleGauge(M5Dial_hvac->getTemperatureHisteresis(),M5Dial_hvac->getTemperatureHisteresisMin(), M5Dial_hvac->getTemperatureHisteresisMax());
+          nm_drawTempScaleGauge("HISTEREZA",M5Dial_hvac->getTemperatureHisteresis(),M5Dial_hvac->getTemperatureHisteresisMin(), M5Dial_hvac->getTemperatureHisteresisMax());
           break;
         case 6:
           nm_menu_max = DPrograms->getPCount() - 1;
@@ -731,7 +765,7 @@ void nm_drawOnOffGauge(bool isOn){
         canvas.drawString(F("OFF"), 120, 140);}
 }
 
-void nm_drawTempScaleGauge (_supla_int16_t t_value, _supla_int16_t min_value, _supla_int16_t max_value) {
+void nm_drawTempScaleGauge (char* g_title, _supla_int16_t t_value, _supla_int16_t min_value, _supla_int16_t max_value) {
 
     
       double range = (max_value - min_value);
@@ -748,9 +782,10 @@ void nm_drawTempScaleGauge (_supla_int16_t t_value, _supla_int16_t min_value, _s
       canvas.drawString(String(max_value/100)+"°C", 220, 140);
       canvas.loadFont(SegoeUISemiBold20);//canvas.setTextSize(1);
       canvas.drawString(String(((double)t_value)/100,1)+"°C", 120, 140);
+      canvas.drawString(g_title, 120, 80);
 }
 
-void nm_drawScaleGauge (_supla_int16_t t_value, _supla_int16_t min_value, _supla_int16_t max_value) {
+void nm_drawScaleGauge (char *g_utitle,char *g_dtitle, _supla_int16_t t_value, _supla_int16_t min_value, _supla_int16_t max_value) {
 
     
       double range = (max_value - min_value);
@@ -767,6 +802,8 @@ void nm_drawScaleGauge (_supla_int16_t t_value, _supla_int16_t min_value, _supla
       canvas.drawNumber(max_value, 220, 140);
       canvas.loadFont(SegoeUISemiBold20);//canvas.setTextSize(1);
       canvas.drawNumber(t_value, 120, 140);
+      canvas.drawString(g_utitle, 120, 80);
+      canvas.drawString(g_dtitle, 120, 180);
 }
 
 void nm_drawStatus(){
