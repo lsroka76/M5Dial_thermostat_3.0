@@ -106,7 +106,7 @@ ProgDisplay::ProgDisplay(int dp_current, int dp_cnt, double *dpt):
 }
 
 double ProgDisplay::getValue() {
-  double rt_value = -273.15;
+  double rt_value = -275;
   //Serial.println(dp_current);
   switch (dp_current) {
     case 0: 
@@ -120,11 +120,12 @@ double ProgDisplay::getValue() {
           break;
     default:
           if ((dp_current > 2)&&(dp_current - 3 < dp_cnt))
-          rt_value = *(dpt +((dp_current-3)*2));
+          rt_value = *(dpt + (dp_current - 3));
           else
-          if ((dp_current >= dp_cnt + 3)&&(dp_current  < (2*dp_cnt+3)))
-          rt_value = 1*(*(dpt +((dp_current-(dp_cnt + 3))*2)));
-          if (rt_value > -273.15) rt_value = -1*rt_value; 
+          if ((dp_current >= dp_cnt + 3)&&(dp_current  < (2*dp_cnt+3))) {
+            rt_value = 1*(*(dpt +(dp_current - (dp_cnt + 3))));
+            if (rt_value > -275) rt_value = -1*rt_value;
+          } 
           break;
   }
     return rt_value;

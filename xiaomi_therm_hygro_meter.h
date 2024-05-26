@@ -35,6 +35,7 @@ class XiaomiThermHygroMeter : public Supla::Sensor::ThermHygroMeter {
     xiaomi_rssi = sens_rssi;
     xiaomi_mac = sens_mac;
   }
+  
   double getTemp() override {
     return *(xiaomi_temperature);
   }
@@ -55,21 +56,20 @@ class XiaomiThermHygroMeter : public Supla::Sensor::ThermHygroMeter {
     humidity = val;
   }
 
-void iterateAlways() override {
+  void iterateAlways() override {
     if (millis() - lastReadTime > 120000) {
       lastReadTime = millis();
       channel.setNewValue(getTemp(), getHumi());
       //channel.setBatteryLevel(getBatt());
     }
-}
-void onInit() override {
+  }
+
+  void onInit() override {
     channel.setNewValue(*xiaomi_temperature, *xiaomi_humidity);
     channel.setBatteryLevel(*xiaomi_battery);
-    }
+  }
 
-void handleGetChannelState(TDSC_ChannelState *channelState) override {
-
-    
+  void handleGetChannelState(TDSC_ChannelState *channelState) override {
 
     channelState->Fields = channelState->Fields | SUPLA_CHANNELSTATE_FIELD_MAC |
                           SUPLA_CHANNELSTATE_FIELD_BATTERYLEVEL |
@@ -97,7 +97,7 @@ void handleGetChannelState(TDSC_ChannelState *channelState) override {
     } else {
       channelState->WiFiSignalStrength = 2 * (*xiaomi_rssi + 100);
     }
- }
+  }
 
  protected:
   double temperature = TEMPERATURE_NOT_AVAILABLE;
@@ -143,15 +143,16 @@ class XiaomiCalcThermHygroMeter : public Supla::Sensor::ThermHygroMeter {
     humidity = val;
   }
 
-void iterateAlways() override {
+  void iterateAlways() override {
     if (millis() - lastReadTime > 10000) {
       lastReadTime = millis();
       channel.setNewValue(getTemp(), getHumi());
     }
-}
-void onInit() override {
+  }
+
+  void onInit() override {
     channel.setNewValue(temperature, humidity);
-    }
+  }
 
  protected:
   

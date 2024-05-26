@@ -44,6 +44,7 @@
 
 // Supla section
 
+#undef USE_HARDCODED_DATA
 #define USE_HARDCODED_DATA
 
 Supla::Eeprom eeprom;
@@ -169,12 +170,18 @@ const static char *program_names[] PROGMEM = {
 "lokalizacja 4",
 "lokalizacja 5",
 "lokalizacja 6",
+"lokalizacja 7",
+"lokalizacja 8",
+"lokalizacja 9",
 "avg - lokalizacja 1",
 "avg - lokalizacja 2",
 "avg - lokalizacja 3",
 "avg - lokalizacja 4",
 "avg - lokalizacja 5",
-"avg - lokalizacja 6"
+"avg - lokalizacja 6",
+"avg - lokalizacja 7",
+"avg - lokalizacja 8",
+"avg - lokalizacja 9"
 };
 
 double sensors_temperature [MAX_SENSORS];
@@ -335,7 +342,7 @@ void setup() {
   PDstep_mvr->setDefaultFunction(SUPLA_CHANNELFNC_POWERSWITCH);
   PDstep_mvr->addAction(Supla::TURN_ON, THT_dah,Supla::ON_CHANGE);
 
-  hvac_therm = new Supla::Sensor::XiaomiCalcThermHygroMeter(DPrograms, &sensors_temperature[0], &sensors_humidity[0], 6);
+  hvac_therm = new Supla::Sensor::XiaomiCalcThermHygroMeter(DPrograms, &sensors_temperature[0], &sensors_humidity[0], Sensors_cnt);
 
   M5Dial_hvac->setMainThermometerChannelNo(4);
   
@@ -612,7 +619,10 @@ void drawMenu0(){
       if (M5Dial_hvac->getChannel()->isHvacFlagHeating()) drawFlameIcon(120,120,TFT_RED, TFT_YELLOW);
       else drawFlameIcon(120,120,TFT_LIGHTGREY, TFT_DARKGREY);
 
-      canvas.drawString(String(((double)M5Dial_hvac->getPrimaryTemp())/100,1)+"°C",40, 100);
+      if (M5Dial_hvac->getPrimaryTemp() > INT16_MIN)
+        canvas.drawString(String(((double)M5Dial_hvac->getPrimaryTemp())/100,1)+"°C",40, 100);
+      else
+        canvas.drawString("--- °C",40, 100);
       canvas.drawString(String(((double)M5Dial_hvac->getTemperatureSetpointHeat())/100,1)+"°C",200, 100);
 
       canvas.setTextColor(TFT_GREEN);
@@ -677,7 +687,7 @@ void drawMenu2(long selector){
           nm_menu_max = 1;
           if (nm_position_delta !=0) 
             if (M5Dial_hvac->isCountdownEnabled()) M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET, 0);
-            else M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET, tht_timer);
+            else M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET, tht_timer*60);
           nm_drawOnOffGauge(M5Dial_hvac->isCountdownEnabled());
           break;
         case 2:
@@ -865,6 +875,9 @@ void nm_drawPrograms(Supla::Sensor::ProgDisplay *pdisplay){
   canvas.loadFont(SegoeUISemiBold20);
   canvas.drawString(String("program"), 120,80);
   canvas.drawString(String(pdisplay->getValue()), 120,160);
-  canvas.drawString(program_names[pdisplay->getDP()], 120,120);
+  if (pdisplay->getDP() > Sensors_cnt+2)
+    canvas.drawString(program_names[12+ pdisplay->getDP() - (Sensors_cnt + 3)], 120,120);
+  else
+    canvas.drawString(program_names[pdisplay->getDP()], 120,120);
 
   }
