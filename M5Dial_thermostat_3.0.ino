@@ -145,8 +145,12 @@ const static char *LOCS_PARAMS[] PROGMEM = {
 
 
 #ifdef USE_HARDCODED_DATA
+#define SUPLA_WIFI_SSID wifi_ssid
+#define SUPLA WIFI_PASS wifi_pass
+#define SUPLA_SVR supla_svr
+#define SUPLA_EMAIL supla_email
 
- const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {  
+const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {  
 {"A4:C1:38:63:D1:8D","lokalizacja 1"},
 {"A4:C1:38:19:74:38","lokalizacja 2"},
 {"A4:C1:38:9C:6C:1D","lokalizacja 3"},
@@ -233,8 +237,8 @@ void setup() {
   
   #ifdef USE_HARDCODED_DATA
 
-  char USER_GUID[SUPLA_GUID_SIZE] = {0x8C,0xAF,0x8D,0x68,0x47,0x14,0x52,0xA9,0x94,0xF2,0xF1,0xAB,0xE5,0xA0,0xCF,0xA0};
-  char USER_AUTH_KEY[SUPLA_AUTHKEY_SIZE] = {0xCE,0x70,0x03,0x93,0x53,0xCD,0x41,0x12,0xFF,0x7D,0xC2,0x97,0x49,0x56,0x9E,0x63};
+  char USER_GUID[SUPLA_GUID_SIZE] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  char USER_AUTH_KEY[SUPLA_AUTHKEY_SIZE] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
   
   #endif
 
@@ -270,17 +274,14 @@ void setup() {
     if (!cfg->getGUID(buf)) {
       cfg->setGUID(USER_GUID);
       cfg->setAuthKey(USER_AUTH_KEY);
-      cfg->setWiFiSSID("SUPLA_EXT");
-      cfg->setWiFiPassword("SuplaESP18");
-      cfg->setSuplaServer("svr3.supla.org");
-      cfg->setEmail("l.sroka@gmail.com");
+      cfg->setWiFiSSID(SUPLA_WIFI_SSID);
+      cfg->setWiFiPassword(SUPLA_WIFI_PASS);
+      cfg->setSuplaServer(SUPLA_SVR);
+      cfg->setEmail(SUPLA_EMAIL);
     }
 
     cfg->getInt32(XIAOMI_CNT, &Sensors_cnt);
     
-    Serial.print("Sensors_cnt ");
-    Serial.println(Sensors_cnt);
-
     if (Sensors_cnt == 0) { 
 
       Sensors_cnt = 6;
