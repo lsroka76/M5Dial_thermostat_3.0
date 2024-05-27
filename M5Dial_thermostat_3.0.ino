@@ -145,24 +145,9 @@ const static char *LOCS_PARAMS[] PROGMEM = {
 
 
 #ifdef USE_HARDCODED_DATA
-#define SUPLA_WIFI_SSID wifi_ssid
-#define SUPLA WIFI_PASS wifi_pass
-#define SUPLA_SVR supla_svr
-#define SUPLA_EMAIL supla_email
 
-<<<<<<< Updated upstream
-const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {  
-{"A4:C1:38:63:D1:8D","lokalizacja 1"},
-{"A4:C1:38:19:74:38","lokalizacja 2"},
-{"A4:C1:38:9C:6C:1D","lokalizacja 3"},
-{"A4:C1:38:9C:27:8E","lokalizacja 4"},
-{"A4:C1:38:75:50:F7","lokalizacja 5"},
-{"A4:C1:38:CB:AC:94","lokalizacja 6"}
-};
-=======
 #include "hardcoded_data.h"
->>>>>>> Stashed changes
-
+  
 #endif //USE_HARDCODED_DATA
 
 char  xiaomiBleDeviceMacs[MAX_SENSORS][18];
