@@ -150,6 +150,7 @@ const static char *LOCS_PARAMS[] PROGMEM = {
 #define SUPLA_SVR supla_svr
 #define SUPLA_EMAIL supla_email
 
+<<<<<<< Updated upstream
 const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {  
 {"A4:C1:38:63:D1:8D","lokalizacja 1"},
 {"A4:C1:38:19:74:38","lokalizacja 2"},
@@ -158,6 +159,9 @@ const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {
 {"A4:C1:38:75:50:F7","lokalizacja 5"},
 {"A4:C1:38:CB:AC:94","lokalizacja 6"}
 };
+=======
+#include "hardcoded_data.h"
+>>>>>>> Stashed changes
 
 #endif //USE_HARDCODED_DATA
 
@@ -235,6 +239,7 @@ Supla::Sensor::DisplayAH *THT_dah;
 
 void setup() {
   
+<<<<<<< Updated upstream
   #ifdef USE_HARDCODED_DATA
 
   char USER_GUID[SUPLA_GUID_SIZE] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
@@ -242,6 +247,8 @@ void setup() {
   
   #endif
 
+=======
+>>>>>>> Stashed changes
   Serial.begin(115200);
  
   Wire.begin();
