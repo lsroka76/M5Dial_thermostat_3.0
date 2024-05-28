@@ -266,9 +266,11 @@ void setup() {
     
     if (Sensors_cnt == 0) { 
 
-      Sensors_cnt = 6;
+      Sensors_cnt = HCD_SENSORS;
+      
       cfg->setInt32(XIAOMI_CNT, Sensors_cnt);
-      for (int j = 0; j < 6; j++) {
+      
+      for (int j = 0; j < HCD_SENSORS; j++) {
 
         cfg->setString(XIAOMI_PARAMS[j],xiaomiBleDeviceMacsTEMP[j][0]);
         cfg->setString(LOCS_PARAMS[j],xiaomiBleDeviceMacsTEMP[j][1]);
