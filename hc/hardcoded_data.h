@@ -16,6 +16,6 @@ const static char *xiaomiBleDeviceMacsTEMP[][2] PROGMEM = {
 {"00:00:00:00:00:00","lokalizacja 5"},
 {"00:00:00:00:00:00","lokalizacja 6"},
 {"00:00:00:00:00:00","lokalizacja 7"},
-{"00:00:00:00:00:00","lokalizacja 8"}
+{"00:00:00:00:00:00","lokalizacja 8"},
 {"00:00:00:00:00:00","lokalizacja 9"}
 };
