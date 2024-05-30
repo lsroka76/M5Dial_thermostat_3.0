@@ -2,3 +2,4 @@ hc/
 /hc
 /hcd
 hcd/
+hcd/hardcoded_data.h
