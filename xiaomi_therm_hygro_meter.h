@@ -132,14 +132,26 @@ class XiaomiCalcThermHygroMeter : public Supla::Sensor::ThermHygroMeter {
     if ((calc_temp == TEMPERATURE_NOT_AVAILABLE)  && (lSHT3x))
       calc_temp = lSHT3x->getTemp();
 
+    return calc_temp;
+
   }
 
   double getHumi() override {
-    if (sensors_cnt < 1) return humidity;
+
+    double calc_humi = HUMIDITY_NOT_AVAILABLE; 
+    
+    if ((sensors_cnt < 1) && (lSHT3x)) 
+      return lSHT3x->getHumi();
+    
     if (PD)
-      return get_ref_humi(PD->getDP());
-    else
-      return HUMIDITY_NOT_AVAILABLE;
+      calc_humi = get_ref_humi(PD->getDP());
+    
+    if ((calc_humi == HUMIDITY_NOT_AVAILABLE)  && (lSHT3x))
+      calc_humi = lSHT3x->getHumi();
+
+    return calc_humi;
+
+    
   }
   
   void setTemp(double val) {
