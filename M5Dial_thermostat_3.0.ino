@@ -146,7 +146,7 @@ const static char *LOCS_PARAMS[] PROGMEM = {
 
 #ifdef USE_HARDCODED_DATA
 
-#include "hcd/hardcoded_data.h"
+#include "hcd/hcd_data.h"
   
 #endif //USE_HARDCODED_DATA
 
