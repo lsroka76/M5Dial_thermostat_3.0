@@ -327,7 +327,7 @@ void setup() {
   PDstep_mvr->setDefaultFunction(SUPLA_CHANNELFNC_POWERSWITCH);
   PDstep_mvr->addAction(Supla::TURN_ON, THT_dah,Supla::ON_CHANGE);
 
-  hvac_therm = new Supla::Sensor::XiaomiCalcThermHygroMeter(DPrograms, &sensors_temperature[0], &sensors_humidity[0], Sensors_cnt);
+  hvac_therm = new Supla::Sensor::XiaomiCalcThermHygroMeter(DPrograms, &sensors_temperature[0], &sensors_humidity[0], Sensors_cnt, SHT31);
 
   M5Dial_hvac->setMainThermometerChannelNo(4);
   

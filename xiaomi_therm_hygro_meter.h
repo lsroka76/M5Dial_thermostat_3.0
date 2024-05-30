@@ -112,18 +112,25 @@ class XiaomiThermHygroMeter : public Supla::Sensor::ThermHygroMeter {
 
 class XiaomiCalcThermHygroMeter : public Supla::Sensor::ThermHygroMeter {
  public:
-  XiaomiCalcThermHygroMeter (Supla::Sensor::ProgDisplay *PD, double *sens_temp, double *sens_humi, int sens_cnt) {
+  XiaomiCalcThermHygroMeter (Supla::Sensor::ProgDisplay *PD, double *sens_temp, double *sens_humi, int sens_cnt, Supla::Sensor::SHT3x *lSHT3x) {
     this->PD = PD;
     xiaomi_temperatures = sens_temp;
     xiaomi_humidities = sens_humi;
     sensors_cnt = sens_cnt;    
+    this->lSHT3x = lSHT3x;
   }
   double getTemp() override {
-    if (sensors_cnt < 1) return temperature;
+    
+    double calc_temp = TEMPERATURE_NOT_AVAILABLE; 
+    
+    if ((sensors_cnt < 1) && (lSHT3x)) 
+      return lSHT3x->getTemp();
+    
     if (PD)
-      return get_ref_temp(PD->getDP());
-    else
-      return TEMPERATURE_NOT_AVAILABLE;
+      calc_temp = get_ref_temp(PD->getDP());
+    
+    if ((calc_temp == TEMPERATURE_NOT_AVAILABLE)  && (lSHT3x))
+      calc_temp = lSHT3x->getTemp();
 
   }
 
@@ -318,6 +325,7 @@ double get_ref_humi(int idx){
   double *xiaomi_temperatures = NULL;
   double *xiaomi_humidities = NULL;
   int sensors_cnt = 0;
+  Supla::Sensor::SHT3x *lSHT3x = NULL;
 
 };
 
