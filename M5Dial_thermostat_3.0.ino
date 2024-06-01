@@ -51,7 +51,7 @@ Supla::Eeprom eeprom;
 
 
 Supla::ESPWifi wifi;
-Supla::LittleFsConfig configSupla;
+Supla::LittleFsConfig configSupla(2048);
 
 Supla::EspWebServer suplaServer;
 
@@ -95,8 +95,8 @@ NimBLEClient *pClient;
 
 
 const static char* menu_1_labels_1[MENU_1_ITEMS] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
-const static char* menu_1_labels_2[MENU_1_ITEMS] PROGMEM = { "- TRYBY","ON/OFF","TEMPERATURY","EKRAN","CZASU","HISTEREZY","PROGRAMÓW","PROGRAMU","","","GŁÓWNY"};
-const static char* menu_1_labels_3[MENU_1_ITEMS] PROGMEM = { "","","(°C)","GŁÓWNY","TIMERA","(°C)","HARMONOGRAMU","","",""};
+const static char* menu_1_labels_2[MENU_1_ITEMS] PROGMEM = { "- TRYBY","ON/OFF","TEMPERATURY","EKRAN","CZASU","HISTEREZY","PROGRAMÓW","TERMOMETRU","","","GŁÓWNY"};
+const static char* menu_1_labels_3[MENU_1_ITEMS] PROGMEM = { "","","(°C)","GŁÓWNY","TIMERA","(°C)","TYGODNIA","","",""};
 
 const static byte menu_1_lines[MENU_1_ITEMS] PROGMEM = {2,2,3,3,3,3,3,2,1,1,2};
 
