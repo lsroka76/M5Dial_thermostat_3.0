@@ -85,15 +85,27 @@ long timer_time;
 NimBLEScan* pBLEScan;
 NimBLEClient *pClient;
 
-#define MENU_ITEMS 10
-#define MENU_ANGLE 36
-#define MENU_OFFSET 166
+#define MENU_1_ITEMS 11
+#define MENU_1_ANGLE 33
+#define MENU_1_OFFSET 166
 
-const static char* menu_labels1[MENU_ITEMS] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
-const static char* menu_labels2[MENU_ITEMS] PROGMEM = { "- TRYBY","ON/OFF","TEMPERATURY","EKRAN","CZASU","HISTEREZY","PROGRAMU","","","GŁÓWNY"};
-const static char* menu_labels3[MENU_ITEMS] PROGMEM = { "","","(°C)","GŁÓWNY","TIMERA","(°C)","","","",""};
+#define MENU_11_ITEMS 5
+#define MENU_11_ANGLE 72
+#define MENU_11_OFFSET 166
 
-const static byte menu_lines[MENU_ITEMS] PROGMEM = {2,2,3,3,3,3,2,1,1,2};
+
+const static char* menu_1_labels_1[MENU_1_ITEMS] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
+const static char* menu_1_labels_2[MENU_1_ITEMS] PROGMEM = { "- TRYBY","ON/OFF","TEMPERATURY","EKRAN","CZASU","HISTEREZY","PROGRAMÓW","PROGRAMU","","","GŁÓWNY"};
+const static char* menu_1_labels_3[MENU_1_ITEMS] PROGMEM = { "","","(°C)","GŁÓWNY","TIMERA","(°C)","HARMONOGRAMU","","",""};
+
+const static byte menu_1_lines[MENU_1_ITEMS] PROGMEM = {2,2,3,3,3,3,3,2,1,1,2};
+
+const static char* menu_11_labels_1[MENU_11_ITEMS] PROGMEM = { "PROGRAM 1","PROGRAM 2","PROGRAM 3","PROGRAM 4","POPRZEDNIE"};
+const static char* menu_11_labels_2[MENU_11_ITEMS] PROGMEM = { "TEMPERATURA","TEMPERATURA","TEMPERATURA","TEMPERATURA","MENU"};
+const static char* menu_11_labels_3[MENU_11_ITEMS] PROGMEM = { "","","","",""};
+
+const static byte menu_11_lines[MENU_11_ITEMS] PROGMEM = {2,2,2,2,2};
+
 
 static constexpr const char* const week_days[7] = {"ND", "PN", "WT", "ŚR","CZ", "PT", "SB"};
 
@@ -101,7 +113,7 @@ long nm_old_position = 0;
 long nm_new_position = 0;
 long nm_position_delta = 0;
 long nm_menu_level = 0;
-long nm_prev_menu = 0;
+long nm_prev_menu[4] = {0,0,0,0};
 long nm_menu_position = 0;
 long nm_menu_end = 2;
 long nm_menu_max = 7;
@@ -479,17 +491,17 @@ if(pBLEScan->isScanning() == false) {
       if (nm_menu_level == nm_menu_end){
 
           nm_menu_level--; 
-          nm_menu_position = nm_prev_menu;
+          nm_menu_position = nm_prev_menu[nm_menu_level];
           nm_old_position = 0;
           reset_encoder();
           nm_position_delta = 0;
           nm_menu_redraw = true;
       }
       else {
-          nm_menu_level++;
-          nm_prev_menu = nm_menu_position;
+          nm_prev_menu[nm_menu_level] = nm_menu_position;
           nm_menu_position = 0;
           nm_old_position = 0;
+          nm_menu_level++;
           reset_encoder();
           nm_position_delta = 0;
         nm_menu_redraw = true;
@@ -541,14 +553,23 @@ if(pBLEScan->isScanning() == false) {
           drawMenu0();
           break;
         case 1:
-          nm_menu_max = MENU_ITEMS - 1;
+          nm_menu_max = MENU_1_ITEMS - 1;
           M5Dial.Speaker.tone(8000, 20);
           drawMenu1();
           break;
       case 2:
           M5Dial.Speaker.tone(8000, 20);
-          drawMenu2(nm_prev_menu);
-          break;    
+          if (nm_prev_menu[1] != 6) drawMenu2(nm_prev_menu[1]);
+          else {
+            nm_menu_end = 3;
+            nm_menu_max = MENU_11_ITEMS - 1;
+            drawMenu11();
+          }
+          break;  
+      case 3:
+          M5Dial.Speaker.tone(8000, 20);
+          drawMenu3(nm_prev_menu[2]);
+          break;  
       }
     }
   }  
@@ -634,22 +655,47 @@ void drawMenu0(){
 void drawMenu1(){
 
       canvas.fillScreen(TFT_NAVY);
-      canvas.fillArc(120, 120, 100, 120, nm_menu_position*MENU_ANGLE + MENU_OFFSET, nm_menu_position*MENU_ANGLE + MENU_ANGLE + MENU_OFFSET, TFT_GREEN);// TFT_VIOLET);
+      canvas.fillArc(120, 120, 100, 120, nm_menu_position*MENU_1_ANGLE + MENU_1_OFFSET, nm_menu_position*MENU_1_ANGLE + MENU_1_ANGLE + MENU_1_OFFSET, TFT_GREEN);// TFT_VIOLET);
       canvas.fillArc(120,120,90,99,0,360,TFT_GREEN); //TFT_VIOLET);
       canvas.setTextColor(TFT_WHITE);
       canvas.fillCircle(120, 120, 89, TFT_NAVY);
-      switch (menu_lines[nm_menu_position]) {
+      switch (menu_1_lines[nm_menu_position]) {
         case 1:
-          canvas.drawString(menu_labels1[nm_menu_position], 120, 120);
+          canvas.drawString(menu_1_labels_1[nm_menu_position], 120, 120);
         break;
         case 2:
-          canvas.drawString(menu_labels1[nm_menu_position], 120, 100);
-          canvas.drawString(menu_labels2[nm_menu_position], 120, 140);
+          canvas.drawString(menu_1_labels_1[nm_menu_position], 120, 100);
+          canvas.drawString(menu_1_labels_2[nm_menu_position], 120, 140);
         break;
         case 3:
-          canvas.drawString(menu_labels1[nm_menu_position], 120, 80);
-          canvas.drawString(menu_labels2[nm_menu_position], 120, 120);
-          canvas.drawString(menu_labels3[nm_menu_position], 120, 160);
+          canvas.drawString(menu_1_labels_1[nm_menu_position], 120, 80);
+          canvas.drawString(menu_1_labels_2[nm_menu_position], 120, 120);
+          canvas.drawString(menu_1_labels_3[nm_menu_position], 120, 160);
+        break;
+      }
+      
+      canvas.pushSprite(0,0);
+}
+
+void drawMenu11(){
+
+      canvas.fillScreen(TFT_NAVY);
+      canvas.fillArc(120, 120, 100, 120, nm_menu_position*MENU_11_ANGLE + MENU_11_OFFSET, nm_menu_position*MENU_11_ANGLE + MENU_11_ANGLE + MENU_11_OFFSET, TFT_GREEN);// TFT_VIOLET);
+      canvas.fillArc(120,120,90,99,0,360,TFT_GREEN); //TFT_VIOLET);
+      canvas.setTextColor(TFT_WHITE);
+      canvas.fillCircle(120, 120, 89, TFT_NAVY);
+      switch (menu_11_lines[nm_menu_position]) {
+        case 1:
+          canvas.drawString(menu_11_labels_1[nm_menu_position], 120, 120);
+        break;
+        case 2:
+          canvas.drawString(menu_11_labels_1[nm_menu_position], 120, 100);
+          canvas.drawString(menu_11_labels_2[nm_menu_position], 120, 140);
+        break;
+        case 3:
+          canvas.drawString(menu_11_labels_1[nm_menu_position], 120, 80);
+          canvas.drawString(menu_11_labels_2[nm_menu_position], 120, 120);
+          canvas.drawString(menu_11_labels_3[nm_menu_position], 120, 160);
         break;
       }
       
@@ -661,7 +707,7 @@ void drawMenu2(long selector){
       canvas.setTextColor(TFT_WHITE); 
       canvas.fillCircle(120,120,100,TFT_NAVY); 
       
-      canvas.drawString(menu_labels1[selector], 120, 80);     
+      canvas.drawString(menu_1_labels_1[selector], 120, 80);     
         switch (selector){
         case 0:
           nm_menu_max = 2;
@@ -698,29 +744,65 @@ void drawMenu2(long selector){
           if (nm_position_delta < 0) M5Dial_hvac->setTemperatureHisteresis(M5Dial_hvac->getTemperatureHisteresis() - 10);
           nm_drawTempScaleGauge("HISTEREZA",M5Dial_hvac->getTemperatureHisteresis(),M5Dial_hvac->getTemperatureHisteresisMin(), M5Dial_hvac->getTemperatureHisteresisMax());
           break;
-        case 6:
+        //case 6: //new menu level
+          //nm_menu_end = 3;
+          
+          break;
+        case 7:
           nm_menu_max = DPrograms->getPCount() - 1;
           if (nm_position_delta !=0) DPrograms->setDP(nm_menu_position);
           else nm_menu_position = DPrograms->getDP();
           nm_drawPrograms(DPrograms);
           break;
-        case 7:
+        case 8:
           nm_menu_max = 1;
           nm_drawStatus();
           break;
-        case 8:
+        case 9:
           nm_menu_max = Sensors_cnt-1;
           nm_drawSensors();
           break;
-        case 9:
+        case 10:
           nm_menu_level = 0;
           nm_menu_redraw = true;
           break;
         default:
-          ;
+          break;
       }
       canvas.pushSprite(0,0);
 }
+
+void drawMenu3(long selector){
+
+      canvas.setTextColor(TFT_WHITE); 
+      canvas.fillCircle(120,120,100,TFT_NAVY); 
+      
+      canvas.drawString(menu_11_labels_1[selector], 120, 80);     
+        switch (selector){
+        case 0:
+          nm_drawProgramTempGauge(menu_11_labels_1[selector],1);
+          break;
+        case 1:
+          nm_drawProgramTempGauge(menu_11_labels_1[selector],2);
+          break;
+        case 2:
+          nm_drawProgramTempGauge(menu_11_labels_1[selector],3);
+           break;  
+        case 3:
+          nm_drawProgramTempGauge(menu_11_labels_1[selector],4);
+          break;
+        case 4:
+          nm_menu_end = 2;
+          nm_menu_level = 1;
+          nm_menu_position = nm_prev_menu[1];
+          nm_menu_redraw = true;
+          break;
+        default:
+          break;
+      }
+      canvas.pushSprite(0,0);
+}
+
 
 void nm_drawTMGauge() {
 
@@ -760,7 +842,7 @@ void nm_drawOnOffGauge(bool isOn){
         canvas.drawString(F("OFF"), 120, 140);}
 }
 
-void nm_drawTempScaleGauge (char* g_title, _supla_int16_t t_value, _supla_int16_t min_value, _supla_int16_t max_value) {
+void nm_drawTempScaleGauge (const char* g_title, _supla_int16_t t_value, _supla_int16_t min_value, _supla_int16_t max_value) {
 
     
       double range = (max_value - min_value);
@@ -866,3 +948,15 @@ void nm_drawPrograms(Supla::Sensor::ProgDisplay *pdisplay){
     canvas.drawString(program_names[pdisplay->getDP()], 120,120);
 
   }
+
+void nm_drawProgramTempGauge(const char *g_title, int program_id) {
+
+  TWeeklyScheduleProgram program = M5Dial_hvac->getProgramById(program_id,false); 
+  
+  if (nm_position_delta > 0) M5Dial_hvac->setProgram(program_id, program.Mode, program.SetpointTemperatureHeat + 50,false);
+  if (nm_position_delta < 0) M5Dial_hvac->setProgram(program_id, program.Mode, program.SetpointTemperatureHeat - 50,false);
+  if (nm_position_delta != 0) program = M5Dial_hvac->getProgramById(program_id,false);
+  
+  nm_drawTempScaleGauge(g_title,program.SetpointTemperatureHeat,M5Dial_hvac->getDefaultTemperatureRoomMin(),M5Dial_hvac->getDefaultTemperatureRoomMax());
+          
+}
