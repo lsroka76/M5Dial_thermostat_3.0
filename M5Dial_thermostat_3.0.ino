@@ -94,15 +94,15 @@ NimBLEClient *pClient;
 #define MENU_11_OFFSET 166
 
 
-const static char* menu_1_labels_1[MENU_1_ITEMS] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
-const static char* menu_1_labels_2[MENU_1_ITEMS] PROGMEM = { "- TRYBY","ON/OFF","TEMPERATURY","EKRAN","CZASU","HISTEREZY","PROGRAMÓW","TERMOMETRU","","","GŁÓWNY"};
-const static char* menu_1_labels_3[MENU_1_ITEMS] PROGMEM = { "","","(°C)","GŁÓWNY","TIMERA","(°C)","TYGODNIA","","",""};
+const static char menu_1_labels_1[MENU_1_ITEMS][12] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
+const static char menu_1_labels_2[MENU_1_ITEMS][12] PROGMEM = { "- TRYBY","ON/OFF","TEMPERATURY","EKRAN","CZASU","HISTEREZY","PROGRAMÓW","TERMOMETRU","","","GŁÓWNY"};
+const static char menu_1_labels_3[MENU_1_ITEMS][12] PROGMEM = { "","","(°C)","GŁÓWNY","TIMERA","(°C)","TYGODNIA","","",""};
 
 const static byte menu_1_lines[MENU_1_ITEMS] PROGMEM = {2,2,3,3,3,3,3,2,1,1,2};
 
-const static char* menu_11_labels_1[MENU_11_ITEMS] PROGMEM = { "PROGRAM 1","PROGRAM 2","PROGRAM 3","PROGRAM 4","POPRZEDNIE"};
-const static char* menu_11_labels_2[MENU_11_ITEMS] PROGMEM = { "TEMPERATURA","TEMPERATURA","TEMPERATURA","TEMPERATURA","MENU"};
-const static char* menu_11_labels_3[MENU_11_ITEMS] PROGMEM = { "","","","",""};
+const static char menu_11_labels_1[MENU_11_ITEMS][12] PROGMEM = { "PROGRAM 1","PROGRAM 2","PROGRAM 3","PROGRAM 4","POPRZEDNIE"};
+const static char menu_11_labels_2[MENU_11_ITEMS][12] PROGMEM = { "TEMPERATURA","TEMPERATURA","TEMPERATURA","TEMPERATURA","MENU"};
+const static char menu_11_labels_3[MENU_11_ITEMS][12] PROGMEM = { "","","","",""};
 
 const static byte menu_11_lines[MENU_11_ITEMS] PROGMEM = {2,2,2,2,2};
 
@@ -555,7 +555,7 @@ if(pBLEScan->isScanning() == false) {
         case 1:
           nm_menu_max = MENU_1_ITEMS - 1;
           M5Dial.Speaker.tone(8000, 20);
-          drawMenu1();
+          drawMenu1(MENU_1_ANGLE, MENU_1_OFFSET, menu_1_lines, menu_1_labels_1[0], menu_1_labels_2[0], menu_1_labels_3[0]);
           break;
       case 2:
           M5Dial.Speaker.tone(8000, 20);
@@ -563,7 +563,7 @@ if(pBLEScan->isScanning() == false) {
           else {
             nm_menu_end = 3;
             nm_menu_max = MENU_11_ITEMS - 1;
-            drawMenu11();
+            drawMenu1(MENU_11_ANGLE, MENU_11_OFFSET, menu_11_lines, menu_11_labels_1[0], menu_11_labels_2[0], menu_11_labels_3[0]);
           }
           break;  
       case 3:
@@ -652,50 +652,29 @@ void drawMenu0(){
       canvas.pushSprite(0,0);
 }
 
-void drawMenu1(){
+void drawMenu1(int menu_angle, int menu_offset,const byte *menu_lines, const char *menu_labels_1, const char *menu_labels_2, const char *menu_labels_3){
 
       canvas.fillScreen(TFT_NAVY);
-      canvas.fillArc(120, 120, 100, 120, nm_menu_position*MENU_1_ANGLE + MENU_1_OFFSET, nm_menu_position*MENU_1_ANGLE + MENU_1_ANGLE + MENU_1_OFFSET, TFT_GREEN);// TFT_VIOLET);
-      canvas.fillArc(120,120,90,99,0,360,TFT_GREEN); //TFT_VIOLET);
+
+      int start_angle = nm_menu_position*menu_angle + menu_offset;
+      int end_angle = start_angle + menu_angle;
+
+      canvas.fillArc(120, 120, 100, 120, start_angle, end_angle, TFT_GREEN);
+      canvas.fillArc(120,120,90,99,0,360,TFT_GREEN); 
       canvas.setTextColor(TFT_WHITE);
       canvas.fillCircle(120, 120, 89, TFT_NAVY);
-      switch (menu_1_lines[nm_menu_position]) {
+      switch (*(menu_lines + nm_menu_position)) {
         case 1:
-          canvas.drawString(menu_1_labels_1[nm_menu_position], 120, 120);
+          canvas.drawString((menu_labels_1 + (12 * nm_menu_position)), 120, 120);
         break;
         case 2:
-          canvas.drawString(menu_1_labels_1[nm_menu_position], 120, 100);
-          canvas.drawString(menu_1_labels_2[nm_menu_position], 120, 140);
+          canvas.drawString((menu_labels_1 + (12 * nm_menu_position)), 120, 100);
+          canvas.drawString((menu_labels_2 + (12 * nm_menu_position)), 120, 140);
         break;
         case 3:
-          canvas.drawString(menu_1_labels_1[nm_menu_position], 120, 80);
-          canvas.drawString(menu_1_labels_2[nm_menu_position], 120, 120);
-          canvas.drawString(menu_1_labels_3[nm_menu_position], 120, 160);
-        break;
-      }
-      
-      canvas.pushSprite(0,0);
-}
-
-void drawMenu11(){
-
-      canvas.fillScreen(TFT_NAVY);
-      canvas.fillArc(120, 120, 100, 120, nm_menu_position*MENU_11_ANGLE + MENU_11_OFFSET, nm_menu_position*MENU_11_ANGLE + MENU_11_ANGLE + MENU_11_OFFSET, TFT_GREEN);// TFT_VIOLET);
-      canvas.fillArc(120,120,90,99,0,360,TFT_GREEN); //TFT_VIOLET);
-      canvas.setTextColor(TFT_WHITE);
-      canvas.fillCircle(120, 120, 89, TFT_NAVY);
-      switch (menu_11_lines[nm_menu_position]) {
-        case 1:
-          canvas.drawString(menu_11_labels_1[nm_menu_position], 120, 120);
-        break;
-        case 2:
-          canvas.drawString(menu_11_labels_1[nm_menu_position], 120, 100);
-          canvas.drawString(menu_11_labels_2[nm_menu_position], 120, 140);
-        break;
-        case 3:
-          canvas.drawString(menu_11_labels_1[nm_menu_position], 120, 80);
-          canvas.drawString(menu_11_labels_2[nm_menu_position], 120, 120);
-          canvas.drawString(menu_11_labels_3[nm_menu_position], 120, 160);
+          canvas.drawString((menu_labels_1 + (12 * nm_menu_position)), 120, 80);
+          canvas.drawString((menu_labels_2 + (12 * nm_menu_position)), 120, 120);
+          canvas.drawString((menu_labels_3 + (12 * nm_menu_position)), 120, 160);
         break;
       }
       
@@ -943,7 +922,7 @@ void nm_drawPrograms(Supla::Sensor::ProgDisplay *pdisplay){
   canvas.drawString(String("program"), 120,80);
   canvas.drawString(String(pdisplay->getValue()), 120,160);
   if (pdisplay->getDP() > Sensors_cnt+2)
-    canvas.drawString(program_names[12+ pdisplay->getDP() - (Sensors_cnt + 3)], 120,120);
+    canvas.drawString(program_names[12 + pdisplay->getDP() - (Sensors_cnt + 3)], 120,120);
   else
     canvas.drawString(program_names[pdisplay->getDP()], 120,120);
 
