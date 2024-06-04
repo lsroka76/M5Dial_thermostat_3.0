@@ -124,23 +124,24 @@ const static byte menu_12_lines[MENU_12_ITEMS] PROGMEM = {2,3,3,2};
 
 static constexpr const char* const week_days[7] = {"ND", "PN", "WT", "ŚR","CZ", "PT", "SB"};
 
-long nm_old_position = 0;
-long nm_new_position = 0;
-long nm_position_delta = 0;
-long nm_menu_level = 0;
-long nm_prev_menu[4] = {0,0,0,0};
-long nm_menu_position = 0;
-long nm_menu_end = 2;
-long nm_menu_max = 7;
-bool nm_menu_redraw = true;
+long      nm_old_position = 0;
+long      nm_new_position = 0;
+long      nm_position_delta = 0;
+long      nm_menu_level = 0;
+long      nm_prev_menu[4] = {0,0,0,0};
+long      nm_menu_position = 0;
+long      nm_menu_end = 2;
+long      nm_menu_max = 7;
+bool      nm_menu_redraw = true;
 
-bool screen_saver_on = false;
+bool      screen_saver_on = false;
 
-bool nm_config_mode = false;
+bool      nm_config_mode = false;
 
-bool ms_tht_change = true;
+bool      ms_tht_change = true;
 
-time_t tht_timer = 0;
+time_t    tht_timer_time = 0;
+uint32_t  tht_timer_temp = 2100;
 
 m5::touch_state_t touch_prev_state;
 
@@ -318,9 +319,10 @@ void setup() {
       cfg->getString(LOCS_PARAMS[j],xiaomiBleDeviceLocs[j],31);
     }
 
-    uint32_t t_timer;
+    uint32_t t_timer_tmp;
 
-    if (cfg->getUInt32(HVAC_T_TIME, &t_timer)) tht_timer = (time_t)t_timer;
+    if (cfg->getUInt32(HVAC_T_TIME, &t_timer_tmp)) tht_timer_time = (time_t)t_timer_tmp;
+    if (cfg->getUInt32(HVAC_T_TEMP, &t_timer_tmp)) tht_timer_temp  = t_timer_tmp;
 }
   
   for (int i = 0; i < Sensors_cnt; i++) {
@@ -577,18 +579,18 @@ if(pBLEScan->isScanning() == false) {
           break;
         case 1:
           nm_menu_max = MENU_1_ITEMS - 1;
-          M5Dial.Speaker.tone(8000, 20);
+          if (nm_position_delta != 0) M5Dial.Speaker.tone(8000, 20);
           drawMenu1(MENU_1_ANGLE, MENU_1_OFFSET, menu_1_lines, menu_1_labels_1[0], menu_1_labels_2[0], menu_1_labels_3[0]);
           break;
       case 2:
-          M5Dial.Speaker.tone(8000, 20);
-          if (nm_prev_menu[1] == 5) {
+          if (nm_position_delta != 0) M5Dial.Speaker.tone(8000, 20);
+          if (nm_prev_menu[1] == MENU_11_POS) {
             nm_menu_end = 3;
             nm_menu_max = MENU_11_ITEMS - 1;
             drawMenu1(MENU_11_ANGLE, MENU_11_OFFSET, menu_11_lines, menu_11_labels_1[0], menu_11_labels_2[0], menu_11_labels_3[0]);
           }
           else
-          if (nm_prev_menu[1] == 1) {
+          if (nm_prev_menu[1] == MENU_12_POS) {
             nm_menu_end = 3;
             nm_menu_max = MENU_12_ITEMS - 1;
             drawMenu1(MENU_12_ANGLE, MENU_12_OFFSET, menu_12_lines, menu_12_labels_1[0], menu_12_labels_2[0], menu_12_labels_3[0]);
@@ -596,10 +598,10 @@ if(pBLEScan->isScanning() == false) {
           else drawMenu2(nm_prev_menu[1]);
           break;  
       case 3:
-          M5Dial.Speaker.tone(8000, 20);
-          if (nm_prev_menu[1] == MENU_11_POS) drawMenu3(nm_prev_menu[2]);
+          if (nm_position_delta != 0) M5Dial.Speaker.tone(8000, 20);
+          if (nm_prev_menu[1] == MENU_11_POS) drawMenu3_11(nm_prev_menu[2]);
           else
-          if (nm_prev_menu[1] == MENU_12_POS) drawMenu31(nm_prev_menu[2]);
+          if (nm_prev_menu[1] == MENU_12_POS) drawMenu3_12(nm_prev_menu[2]);
           break;  
       }
     }
@@ -665,7 +667,17 @@ void drawMenu0(){
       canvas.setTextColor(TFT_GREEN);
       if (M5Dial_hvac->isWeeklyScheduleEnabled()) drawCalendarIcon(100,160, TFT_GREEN, TFT_NAVY);
       if (M5Dial_hvac->isManualModeEnabled()) drawWrenchIcon(120,160,TFT_GREEN, TFT_NAVY);
-      if (M5Dial_hvac->isCountdownEnabled()) canvas.drawString("timer : " +String(M5Dial_hvac->getCountDownTimerEnds()-Supla::Clock::GetTimeStamp()),120,160);
+      if (M5Dial_hvac->isCountdownEnabled()) { 
+       
+        canvas.fillRoundRect(80,160,80,40,10, lgfx::v1::color332(0,255,0));
+        canvas.fillRoundRect(85,165,70,30,10, lgfx::v1::color332(128,128,128));
+
+        time_t timer_diff = M5Dial_hvac->getCountDownTimerEnds()-Supla::Clock::GetTimeStamp();
+        uint16_t timer_mins = timer_diff / 60;
+        uint16_t timer_secs = timer_diff - (timer_mins * 60);
+
+        canvas.drawString(String(timer_mins) + ":" + String(timer_secs),120,180);
+      }
 
       if (M5Dial_hvac->isThermostatDisabled()) drawDisabledIcon(120,180,TFT_RED,TFT_WHITE);
 
@@ -766,7 +778,7 @@ void drawMenu2(long selector){
       canvas.pushSprite(0,0);
 }
 
-void drawMenu3(long selector){
+void drawMenu3_11(long selector){
 
       canvas.setTextColor(TFT_WHITE); 
       canvas.fillCircle(120,120,100,TFT_NAVY); 
@@ -797,7 +809,7 @@ void drawMenu3(long selector){
       canvas.pushSprite(0,0);
 }
 
-void drawMenu31(long selector){
+void drawMenu3_12(long selector){
 
       auto cfg = Supla::Storage::ConfigInstance();
 
@@ -810,23 +822,34 @@ void drawMenu31(long selector){
           nm_menu_max = 1;
           if (nm_position_delta !=0) 
             if (M5Dial_hvac->isCountdownEnabled()) M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET, 0);
-            else M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET, tht_timer * 60);
+            else M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET,tht_timer_temp, INT16_MIN, tht_timer_time * 60);
           nm_drawOnOffGauge(M5Dial_hvac->isCountdownEnabled());
           break;
         case 1:
           nm_menu_max  = 0;
           
-          if (nm_position_delta > 0) tht_timer += 15;
-          if (nm_position_delta < 0) tht_timer -= 15;
+          if (nm_position_delta > 0) tht_timer_time += 15;
+          if (nm_position_delta < 0) tht_timer_time -= 15;
           
-          if (tht_timer < 0) tht_timer = 0;
+          if (tht_timer_time < 0) tht_timer_time = 0;
           
           if (cfg && (nm_position_delta != 0))
-              cfg->setUInt32(HVAC_T_TIME, tht_timer);
+              cfg->setUInt32(HVAC_T_TIME, tht_timer_time);
 
-          nm_drawScaleGauge("TIMER", "minuty", tht_timer, 0, 1440);
+          nm_drawScaleGauge("TIMER", "minuty", tht_timer_time, 0, 1440);
           break;
         case 2:
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) tht_timer_temp += 50;
+          if (nm_position_delta < 0) tht_timer_temp -= 50;
+          
+          if (tht_timer_temp < 0) tht_timer_temp = 0;
+          
+          if (cfg && (nm_position_delta != 0))
+              cfg->setUInt32(HVAC_T_TEMP, tht_timer_temp);
+
+          nm_drawTempScaleGauge("TIMER", tht_timer_temp, M5Dial_hvac->getDefaultTemperatureRoomMin(),M5Dial_hvac->getDefaultTemperatureRoomMax());
            break;  
         case 3:
           nm_menu_end = 2;
