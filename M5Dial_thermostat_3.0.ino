@@ -16,6 +16,8 @@
 #include <supla/network/html/wifi_parameters.h>
 #include <supla/network/html/custom_parameter.h>
 #include <supla/network/html/custom_text_parameter.h>
+#include <supla/network/html/time_parameters.h>
+#include <supla/network/html/hvac_parameters.h>
 #include <supla/device/supla_ca_cert.h>
 #include <supla/events.h>
 #include <supla/storage/eeprom.h>
@@ -58,6 +60,8 @@ Supla::EspWebServer suplaServer;
 Supla::Html::DeviceInfo htmlDeviceInfo(&SuplaDevice);
 Supla::Html::WifiParameters htmlWifi;
 Supla::Html::ProtocolParameters htmlProto;
+Supla::Html::TimeParameters htmlTimeParameters(&SuplaDevice);
+Supla::Html::HvacParameters htmlHvacParameters;
 
 Supla::Sensor::SHT3x *SHT31;
 
@@ -92,16 +96,18 @@ NimBLEClient *pClient;
 #define MENU_11_ITEMS 5
 #define MENU_11_ANGLE 72
 #define MENU_11_OFFSET 166
+#define MENU_11_POS 5 
 
 #define MENU_12_ITEMS 4
 #define MENU_12_ANGLE 90
 #define MENU_12_OFFSET 166
+#define MENU_12_POS 1
 
 const static char menu_1_labels_1[MENU_1_ITEMS][12] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
-const static char menu_1_labels_2[MENU_1_ITEMS][12] PROGMEM = { "- TRYBY","USTAWIENIA","TEMPERATURY","EKRAN","HISTEREZY","PROGRAMÓW","TERMOMETRU","","","GŁÓWNY"};
-const static char menu_1_labels_3[MENU_1_ITEMS][12] PROGMEM = { "","","(°C)","GŁÓWNY","(°C)","TYGODNIA","","",""};
+const static char menu_1_labels_2[MENU_1_ITEMS][12] PROGMEM = { "TRYB","USTAWIENIA","TEMPERATURY","EKRAN","HISTEREZY","PROGRAMÓW","TERMOMETRU","","","GŁÓWNY"};
+const static char menu_1_labels_3[MENU_1_ITEMS][12] PROGMEM = { "PRACY","","(°C)","GŁÓWNY","(°C)","TYGODNIA","","",""};
 
-const static byte menu_1_lines[MENU_1_ITEMS] PROGMEM = {2,2,3,3,3,3,2,1,1,2};
+const static byte menu_1_lines[MENU_1_ITEMS] PROGMEM = {3,2,3,3,3,3,2,1,1,2};
 
 const static char menu_11_labels_1[MENU_11_ITEMS][12] PROGMEM = { "PROGRAM 1","PROGRAM 2","PROGRAM 3","PROGRAM 4","POPRZEDNIE"};
 const static char menu_11_labels_2[MENU_11_ITEMS][12] PROGMEM = { "TEMPERATURA","TEMPERATURA","TEMPERATURA","TEMPERATURA","MENU"};
@@ -164,6 +170,8 @@ const static char *LOCS_PARAMS[] PROGMEM = {
   "loc#8",
   "loc#9" };
 
+const static char HVAC_T_TIME [] PROGMEM = "Hvac_T_time";
+const static char HVAC_T_TEMP [] PROGMEM = "Hvac_T_temp";
 
 #ifdef USE_HARDCODED_DATA
 
@@ -303,12 +311,16 @@ void setup() {
 
   if (cfg) {
 
-    cfg->getInt32(XIAOMI_CNT, &Sensors_cnt);
+    if(!cfg->getInt32(XIAOMI_CNT, &Sensors_cnt)) Sensors_cnt = 0;
 
     for (int j = 0; j < Sensors_cnt; j++) {
       cfg->getString(XIAOMI_PARAMS[j],xiaomiBleDeviceMacs[j],18);
       cfg->getString(LOCS_PARAMS[j],xiaomiBleDeviceLocs[j],31);
     }
+
+    uint32_t t_timer;
+
+    if (cfg->getUInt32(HVAC_T_TIME, &t_timer)) tht_timer = (time_t)t_timer;
 }
   
   for (int i = 0; i < Sensors_cnt; i++) {
@@ -334,7 +346,9 @@ void setup() {
   auto output = new Supla::Control::InternalPinOutput(THT_OUTPUT_PIN);
 
   M5Dial_hvac = new Supla::Control::HvacBase(output);
-  
+
+  htmlHvacParameters.setHvacPtr(M5Dial_hvac);
+
   SHT31 = new Supla::Sensor::SHT3x(0x44);
   SHT31->setInitialCaption("pomiar lokalny");
 
@@ -583,9 +597,9 @@ if(pBLEScan->isScanning() == false) {
           break;  
       case 3:
           M5Dial.Speaker.tone(8000, 20);
-          if (nm_prev_menu[1] == 5) drawMenu3(nm_prev_menu[2]);
+          if (nm_prev_menu[1] == MENU_11_POS) drawMenu3(nm_prev_menu[2]);
           else
-          if (nm_prev_menu[1] == 1) drawMenu31(nm_prev_menu[2]);
+          if (nm_prev_menu[1] == MENU_12_POS) drawMenu31(nm_prev_menu[2]);
           break;  
       }
     }
@@ -785,6 +799,8 @@ void drawMenu3(long selector){
 
 void drawMenu31(long selector){
 
+      auto cfg = Supla::Storage::ConfigInstance();
+
       canvas.setTextColor(TFT_WHITE); 
       canvas.fillCircle(120,120,100,TFT_NAVY); 
       
@@ -799,9 +815,15 @@ void drawMenu31(long selector){
           break;
         case 1:
           nm_menu_max  = 0;
+          
           if (nm_position_delta > 0) tht_timer += 15;
           if (nm_position_delta < 0) tht_timer -= 15;
+          
           if (tht_timer < 0) tht_timer = 0;
+          
+          if (cfg && (nm_position_delta != 0))
+              cfg->setUInt32(HVAC_T_TIME, tht_timer);
+
           nm_drawScaleGauge("TIMER", "minuty", tht_timer, 0, 1440);
           break;
         case 2:
