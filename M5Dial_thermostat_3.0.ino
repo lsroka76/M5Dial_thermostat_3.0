@@ -33,6 +33,7 @@
 #include "M5RTC.h"
 
 #include "OCRAExtended16.h"
+#include "menus.h"
 
 #include "NimBLEDevice.h"
 #if !CONFIG_BT_NIMBLE_EXT_ADV
@@ -41,138 +42,91 @@
 
 #include "encoder_pcnt.h"
 
-#define BT_SCAN_INTERVAL 120
-#define BT_SCAN_TIME 4
-
-// Supla section
+#define BT_SCAN_INTERVAL  120
+#define BT_SCAN_TIME      4
 
 #undef USE_HARDCODED_DATA
 #define USE_HARDCODED_DATA
 
-Supla::Eeprom eeprom;
+// Supla section
+
+Supla::Eeprom                             eeprom;
 
 
-Supla::ESPWifi wifi;
-Supla::LittleFsConfig configSupla(2048);
+Supla::ESPWifi                            wifi;
+Supla::LittleFsConfig                     configSupla(3000);
 
-Supla::EspWebServer suplaServer;
+Supla::EspWebServer                       suplaServer;
 
-Supla::Html::DeviceInfo htmlDeviceInfo(&SuplaDevice);
-Supla::Html::WifiParameters htmlWifi;
-Supla::Html::ProtocolParameters htmlProto;
-Supla::Html::TimeParameters htmlTimeParameters(&SuplaDevice);
-Supla::Html::HvacParameters htmlHvacParameters;
+Supla::Html::DeviceInfo                   htmlDeviceInfo(&SuplaDevice);
+Supla::Html::WifiParameters               htmlWifi;
+Supla::Html::ProtocolParameters           htmlProto;
+Supla::Html::TimeParameters               htmlTimeParameters(&SuplaDevice);
+Supla::Html::HvacParameters               htmlHvacParameters;
 
-Supla::Sensor::SHT3x *SHT31;
+Supla::Sensor::SHT3x                      *SHT31;
 
-Supla::Sensor::ProgDisplay *DPrograms;
-Supla::Control::Multi_VirtualRelay *PDstep_mvr;
+Supla::Sensor::ProgDisplay                *DPrograms;
+Supla::Control::Multi_VirtualRelay        *PDstep_mvr;
 
-Supla::Control::HvacBase *M5Dial_hvac;
+Supla::Control::HvacBase                  *M5Dial_hvac;
 
-#define MAX_SENSORS 9
-#define THT_OUTPUT_PIN 2
+#define MAX_SENSORS                        9
+#define THT_OUTPUT_PIN                     2
 
-Supla::Sensor::XiaomiThermHygroMeter *xiaomiSensors[MAX_SENSORS];
-Supla::Sensor::XiaomiCalcThermHygroMeter *hvac_therm;
+Supla::Sensor::XiaomiThermHygroMeter      *xiaomiSensors[MAX_SENSORS];
+Supla::Sensor::XiaomiCalcThermHygroMeter  *hvac_therm;
 
-int32_t Sensors_cnt = 0;
+int32_t                                   Sensors_cnt = 0;
 
-bool local_mode = true;
+bool                                      local_mode = true;
 
-long screen_saver_time;
-long btScanInterval;
-long timer_time;
+long                                      screen_saver_time;
+long                                      btScanInterval;
+long                                      timer_time;
 
 //end of Supla section
 
-NimBLEScan* pBLEScan;
-NimBLEClient *pClient;
+NimBLEScan                                *pBLEScan;
+NimBLEClient                              *pClient;
 
-#define MENU_1_ITEMS 10
-#define MENU_1_ANGLE 36
-#define MENU_1_OFFSET 166
+static constexpr const char* const week_days[7] = { "ND", "PN", "WT", "ŚR", "CZ", "PT", "SB"};
 
-#define MENU_11_ITEMS 5
-#define MENU_11_ANGLE 72
-#define MENU_11_OFFSET 166
-#define MENU_11_POS 5 
-
-#define MENU_12_ITEMS 4
-#define MENU_12_ANGLE 90
-#define MENU_12_OFFSET 166
-#define MENU_12_POS 1
-
-const static char menu_1_labels_1[MENU_1_ITEMS][12] PROGMEM = { "TERMOSTAT","TIMER","NASTAWA","AKTYWNY","NASTAWA","NASTAWA","WYBÓR","STATUS","CZUJNIKI","EKRAN"};
-const static char menu_1_labels_2[MENU_1_ITEMS][12] PROGMEM = { "TRYB","USTAWIENIA","TEMPERATURY","EKRAN","HISTEREZY","PROGRAMÓW","TERMOMETRU","","","GŁÓWNY"};
-const static char menu_1_labels_3[MENU_1_ITEMS][12] PROGMEM = { "PRACY","","(°C)","GŁÓWNY","(°C)","TYGODNIA","","",""};
-
-const static byte menu_1_lines[MENU_1_ITEMS] PROGMEM = {3,2,3,3,3,3,2,1,1,2};
-
-const static char menu_11_labels_1[MENU_11_ITEMS][12] PROGMEM = { "PROGRAM 1","PROGRAM 2","PROGRAM 3","PROGRAM 4","POPRZEDNIE"};
-const static char menu_11_labels_2[MENU_11_ITEMS][12] PROGMEM = { "TEMPERATURA","TEMPERATURA","TEMPERATURA","TEMPERATURA","MENU"};
-const static char menu_11_labels_3[MENU_11_ITEMS][12] PROGMEM = { "","","","",""};
-
-const static byte menu_11_lines[MENU_11_ITEMS] PROGMEM = {2,2,2,2,2};
-
-
-const static char menu_12_labels_1[MENU_12_ITEMS][12] PROGMEM = { "TIMER","NASTAWA","NASTAWA","POPRZEDNIE"};
-const static char menu_12_labels_2[MENU_12_ITEMS][12] PROGMEM = { "ON/OFF","CZASU","TEMPERATURY","MENU"};
-const static char menu_12_labels_3[MENU_12_ITEMS][12] PROGMEM = { "","TIMERA","TIMERA",""};
-
-const static byte menu_12_lines[MENU_12_ITEMS] PROGMEM = {2,3,3,2};
-
-static constexpr const char* const week_days[7] = {"ND", "PN", "WT", "ŚR","CZ", "PT", "SB"};
-
-long      nm_old_position = 0;
-long      nm_new_position = 0;
+long      nm_old_position   = 0;
+long      nm_new_position   = 0;
 long      nm_position_delta = 0;
-long      nm_menu_level = 0;
-long      nm_prev_menu[4] = {0,0,0,0};
-long      nm_menu_position = 0;
-long      nm_menu_end = 2;
-long      nm_menu_max = 7;
-bool      nm_menu_redraw = true;
+long      nm_menu_level     = 0;
+long      nm_prev_menu[4]   = { 0,  0,  0,  0};
+long      nm_menu_position  = 0;
+long      nm_menu_end       = 2;
+long      nm_menu_max       = 7;
+bool      nm_menu_redraw    = true;
 
-bool      screen_saver_on = false;
+bool      screen_saver_on   = false;
 
-bool      nm_config_mode = false;
+bool      nm_config_mode    = false;
 
-bool      ms_tht_change = true;
+bool      ms_tht_change     = true;
 
-time_t    tht_timer_time = 0;
-uint32_t  tht_timer_temp = 2100;
+time_t    tht_timer_time    = 0;
+uint32_t  tht_timer_temp    = 2100;
 
-m5::touch_state_t touch_prev_state;
+m5::touch_state_t           touch_prev_state;
 
-M5Canvas canvas(&M5Dial.Display);
+M5Canvas                    canvas(&M5Dial.Display);
 
-const char XIAOMI_CNT[] = "Xiaomi_cnt";
+//custom config section
 
-const static char *XIAOMI_PARAMS[] PROGMEM = {
-  "Xiaomi#1",
-  "Xiaomi#2",
-  "Xiaomi#3",
-  "Xiaomi#4",
-  "Xiaomi#5",
-  "Xiaomi#6",
-  "Xiaomi#7",
-  "Xiaomi#8",
-  "Xiaomi#9" };
+const char          XIAOMI_CNT[] = "Xiaomi_cnt";
 
-const static char *LOCS_PARAMS[] PROGMEM = {
-  "loc#1",
-  "loc#2",
-  "loc#3",
-  "loc#4",
-  "loc#5",
-  "loc#6",
-  "loc#7",
-  "loc#8",
-  "loc#9" };
+const static char   *XIAOMI_PARAMS[] PROGMEM = {
+  "Xiaomi#1", "Xiaomi#2", "Xiaomi#3", "Xiaomi#4", "Xiaomi#5", "Xiaomi#6", "Xiaomi#7", "Xiaomi#8", "Xiaomi#9" };
 
-const static char HVAC_T_TIME [] PROGMEM = "Hvac_T_time";
-const static char HVAC_T_TEMP [] PROGMEM = "Hvac_T_temp";
+const static char   *LOCS_PARAMS[] PROGMEM = {
+  "loc#1", "loc#2", "loc#3", "loc#4", "loc#5", "loc#6", "loc#7", "loc#8", "loc#9" };
+
+const static char   HVAC_T_TIME [] PROGMEM = "Hvac_T_time";
+const static char   HVAC_T_TEMP [] PROGMEM = "Hvac_T_temp";
 
 #ifdef USE_HARDCODED_DATA
 
@@ -207,14 +161,14 @@ const static char *program_names[] PROGMEM = {
 "avg - lokalizacja 9"
 };
 
-double sensors_temperature [MAX_SENSORS];
-double sensors_humidity [MAX_SENSORS];
-byte sensors_battery [MAX_SENSORS];
-int sensors_rssi [MAX_SENSORS];
-byte sensors_tick [MAX_SENSORS];
+double  sensors_temperature [MAX_SENSORS];
+double  sensors_humidity    [MAX_SENSORS];
+byte    sensors_battery     [MAX_SENSORS];
+int     sensors_rssi        [MAX_SENSORS];
+byte    sensors_tick        [MAX_SENSORS];
 
 
-std::string strServiceData;
+std::string                 strServiceData;
 
 class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
   void onResult(NimBLEAdvertisedDevice* advertisedDevice) {
@@ -228,6 +182,9 @@ class MyAdvertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks {
       for (int i = 0; i < Sensors_cnt; i++) {
         if (macAddress == xiaomiBleDeviceMacs[i]) {
           int16_t rawTemperature = (strServiceData[7] | (strServiceData[6] << 8));
+          //Serial.print("raw Temperature = ");
+          //Serial.println(rawTemperature);
+          //Serial.println(macAddress);
           float current_temperature = rawTemperature * 0.1;
           byte current_humidity = (float)(strServiceData[8]);
           byte current_batt = (float)(strServiceData[9]);
@@ -250,7 +207,7 @@ sprintf(temp, "Heap: Free:%i, Min:%i, Size:%i, Alloc:%i", ESP.getFreeHeap(), ESP
 return temp;
 }
 
-Supla::Sensor::DisplayAH *THT_dah;
+Supla::Sensor::DisplayAH  *THT_dah;
 
 void setup() {
   
@@ -326,11 +283,12 @@ void setup() {
 }
   
   for (int i = 0; i < Sensors_cnt; i++) {
-    sensors_temperature[i] = -275.0;
-    sensors_humidity[i] = -1;
-    sensors_battery[i] = 255;
-    sensors_rssi[i] = -100;
-    sensors_tick[i] = 0;
+
+    sensors_temperature[i]  = -275.0;
+    sensors_humidity[i]     = -1;
+    sensors_battery[i]      = 255;
+    sensors_rssi[i]         = -100;
+    sensors_tick[i]         = 0;
   }
   
   NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
@@ -381,6 +339,10 @@ void setup() {
   M5Dial_hvac->addAction(Supla::TURN_ON, THT_dah,Supla::ON_HVAC_STANDBY);
   M5Dial_hvac->addAction(Supla::TURN_ON, THT_dah,Supla::ON_HVAC_HEATING);
 
+  M5Dial_hvac->allowWrapAroundTemperatureSetpoints();
+
+  //M5Dial_hvac->setDefaultTemperatureRoomMin(SUPLA_CHANNELFNC_HVAC_THERMOSTAT, 0);
+
   new Supla::M5RTC(&M5Dial.Rtc);
   
   SuplaDevice.setStatusFuncImpl(&status_func);
@@ -411,8 +373,8 @@ void setup() {
   canvas.pushSprite(0,0);
 
   screen_saver_time = millis();
-  btScanInterval = millis();
-  timer_time = millis();
+  btScanInterval    = millis();
+  timer_time        = millis();
 }
 
 
@@ -433,11 +395,12 @@ void loop() {
 
   for (int i = 0; i < Sensors_cnt; i++)
     if (sensors_tick[i] > 5) {
-      sensors_temperature[i] = -275;
-      sensors_humidity[i] = -1;
-      sensors_battery[i] = 255;
-      sensors_rssi[i] = -100;
-      sensors_tick[i] = 0;
+
+      sensors_temperature[i]  =  -275;
+      sensors_humidity[i]     =  -1;
+      sensors_battery[i]      =   255;
+      sensors_rssi[i]         =  -100;
+      sensors_tick[i]         =   0;
     }
   
 
@@ -456,8 +419,8 @@ void loop() {
 
   if (M5Dial_hvac->isCountdownEnabled()&&((millis() - timer_time) > 1000)) {
 
-    timer_time = millis();
-    nm_menu_redraw = true;
+    timer_time      = millis();
+    nm_menu_redraw  = true;
   }
   
 //BLE section
@@ -466,12 +429,6 @@ if(pBLEScan->isScanning() == false) {
     pBLEScan->start(0, nullptr, false);}
 
 //end of BLE section
-
-  //Serial.println(getAllHeap());
-  
-  //double curTemp = SHT31->getTemp();
-  //double curHumi = SHT31->getHumi();
-  //Serial.println(curTemp);
 
   auto t = M5Dial.Touch.getDetail();
   
@@ -484,43 +441,47 @@ if(pBLEScan->isScanning() == false) {
       
       if (screen_saver_on) {
         screen_saver_on = false;
-        nm_menu_redraw = true;
+        nm_menu_redraw  = true;
       }
     //}
   }
 
   if (!screen_saver_on) {
     if (millis()-screen_saver_time > 30000) screen_saver_on = true;
-    }
+  }
 
-  if (M5Dial.BtnA.pressedFor(5000)) {
-
-      screen_saver_on = false;
-      nm_config_mode = true;
-      nm_menu_redraw = true;
-      SuplaDevice.enterConfigMode();
-    }
-
-  if (M5Dial.BtnA.pressedFor(10000)) {
+  if (M5Dial.BtnA.wasReleaseFor(15000)) {
 
       SuplaDevice.softRestart();
-    }
+  }
+
+
+  if (M5Dial.BtnA.wasReleaseFor(5000)) {
+
+      screen_saver_on = false;
+      nm_config_mode  = true;
+      nm_menu_redraw  = true;
+
+      SuplaDevice.enterConfigMode();
+  }
 
   if (!screen_saver_on){
     
-    if (M5Dial.BtnA.wasPressed()){
+    if (M5Dial.BtnA.wasReleased()){
 
-      screen_saver_on = false;
+      screen_saver_on   = false;
       screen_saver_time = millis();
 
       if (nm_menu_level == nm_menu_end){
 
           nm_menu_level--; 
-          nm_menu_position = nm_prev_menu[nm_menu_level];
-          nm_old_position = 0;
+          nm_menu_position  = nm_prev_menu[nm_menu_level];
+          nm_old_position   = 0;
+
           reset_encoder();
+          
           nm_position_delta = 0;
-          nm_menu_redraw = true;
+          nm_menu_redraw    = true;
       }
       else {
           nm_prev_menu[nm_menu_level] = nm_menu_position;
@@ -570,7 +531,6 @@ if(pBLEScan->isScanning() == false) {
          
       switch (nm_menu_level){
         case 0:
-          //nm_menu_max =
           if ((ms_tht_change) && (nm_position_delta != 0)) {
             M5Dial_hvac->handleAction(0,Supla::TOGGLE_OFF_MANUAL_WEEKLY_SCHEDULE_MODES);
             M5Dial.Speaker.tone(8000, 20);
@@ -584,25 +544,18 @@ if(pBLEScan->isScanning() == false) {
           break;
       case 2:
           if (nm_position_delta != 0) M5Dial.Speaker.tone(8000, 20);
-          if (nm_prev_menu[1] == MENU_11_POS) {
-            nm_menu_end = 3;
-            nm_menu_max = MENU_11_ITEMS - 1;
-            drawMenu1(MENU_11_ANGLE, MENU_11_OFFSET, menu_11_lines, menu_11_labels_1[0], menu_11_labels_2[0], menu_11_labels_3[0]);
-          }
-          else
-          if (nm_prev_menu[1] == MENU_12_POS) {
-            nm_menu_end = 3;
-            nm_menu_max = MENU_12_ITEMS - 1;
-            drawMenu1(MENU_12_ANGLE, MENU_12_OFFSET, menu_12_lines, menu_12_labels_1[0], menu_12_labels_2[0], menu_12_labels_3[0]);
-          }
-          else drawMenu2(nm_prev_menu[1]);
+          drawMenu2M();
           break;  
       case 3:
           if (nm_position_delta != 0) M5Dial.Speaker.tone(8000, 20);
           if (nm_prev_menu[1] == MENU_11_POS) drawMenu3_11(nm_prev_menu[2]);
           else
           if (nm_prev_menu[1] == MENU_12_POS) drawMenu3_12(nm_prev_menu[2]);
-          break;  
+          else
+          if (nm_prev_menu[1] == MENU_13_POS) drawMenu3_13(nm_prev_menu[2]);
+          else
+          if (nm_prev_menu[1] == MENU_14_POS) drawMenu3_14(nm_prev_menu[2]);
+        break;  
       }
     }
   }  
@@ -724,56 +677,86 @@ void drawMenu1(int menu_angle, int menu_offset,const byte *menu_lines, const cha
       canvas.pushSprite(0,0);
 }
 
+void drawMenu2M() {
+
+  switch (nm_prev_menu[1]) {
+    case MENU_11_POS:
+      nm_menu_end = 3;
+      nm_menu_max = MENU_11_ITEMS - 1;
+      drawMenu1(MENU_11_ANGLE, MENU_11_OFFSET, menu_11_lines, menu_11_labels_1[0], menu_11_labels_2[0], menu_11_labels_3[0]);
+    break;
+    case MENU_12_POS:
+      nm_menu_end = 3;
+      nm_menu_max = MENU_12_ITEMS - 1;
+      drawMenu1(MENU_12_ANGLE, MENU_12_OFFSET, menu_12_lines, menu_12_labels_1[0], menu_12_labels_2[0], menu_12_labels_3[0]);
+    break;
+    case MENU_13_POS:
+      nm_menu_end = 3;
+      nm_menu_max = MENU_13_ITEMS - 1;
+      drawMenu1(MENU_13_ANGLE, MENU_13_OFFSET, menu_13_lines, menu_13_labels_1[0], menu_13_labels_2[0], menu_13_labels_3[0]);
+    break;
+    case MENU_14_POS:
+      nm_menu_end = 3;
+      nm_menu_max = MENU_14_ITEMS - 1;
+      drawMenu1(MENU_14_ANGLE, MENU_14_OFFSET, menu_14_lines, menu_14_labels_1[0], menu_14_labels_2[0], menu_14_labels_3[0]);
+    break;
+    default:
+      drawMenu2(nm_prev_menu[1]);
+    break;
+  }
+}
+
 void drawMenu2(long selector){
 
       canvas.setTextColor(TFT_WHITE); 
       canvas.fillCircle(120,120,100,TFT_NAVY); 
       
       canvas.drawString(menu_1_labels_1[selector], 120, 80);     
-        switch (selector){
-        case 0:
+      
+      switch (selector){
+        case MENU_1_TMODES: //thermostat modes
+          
           nm_menu_max = 2;
+          
           if (nm_position_delta !=0) M5Dial_hvac->handleAction(0,Supla::TOGGLE_OFF_MANUAL_WEEKLY_SCHEDULE_MODES); 
           nm_drawTMGauge();
-          break;
-        case 1:
-          break;
-        case 2:
+
+        break;
+        case MENU_1_TEMPSET: //setpoint temperature
           nm_menu_max = 1;
+
           if (nm_position_delta > 0) M5Dial_hvac->handleAction(0, Supla::INCREASE_HEATING_TEMPERATURE);
           if (nm_position_delta < 0) M5Dial_hvac->handleAction(0, Supla::DECREASE_HEATING_TEMPERATURE);
-          nm_drawTempScaleGauge("TEMPERATURA",M5Dial_hvac->getTemperatureSetpointHeat(), M5Dial_hvac->getDefaultTemperatureRoomMin(),M5Dial_hvac->getDefaultTemperatureRoomMax());
-          break;  
-        case 3:
-          nm_menu_max = 1;
-          if (nm_position_delta !=0) ms_tht_change = !ms_tht_change;
-          nm_drawOnOffGauge(ms_tht_change);
-          break;
-        case 4:
-          if (nm_position_delta > 0) M5Dial_hvac->setTemperatureHisteresis(M5Dial_hvac->getTemperatureHisteresis() + 10);
-          if (nm_position_delta < 0) M5Dial_hvac->setTemperatureHisteresis(M5Dial_hvac->getTemperatureHisteresis() - 10);
-          nm_drawTempScaleGauge("HISTEREZA",M5Dial_hvac->getTemperatureHisteresis(),M5Dial_hvac->getTemperatureHisteresisMin(), M5Dial_hvac->getTemperatureHisteresisMax());
-          break;
-        case 6:
+          nm_drawTempScaleGauge("TEMPERATURA",M5Dial_hvac->getTemperatureSetpointHeat(), M5Dial_hvac->getTemperatureRoomMin(),M5Dial_hvac->getTemperatureRoomMax());
+          
+        break;
+        case MENU_1_TIMER: //timer submenu
+        break;  
+        case MENU_1_TSTS: //active main screen = user can change thermostat modes using encoder 
+        break;
+        case 4: //weekly schedule programs submenu
+        break;
+        case MENU_1_TSEL:// programy obliczania temperatury - min max avg... 
           nm_menu_max = DPrograms->getPCount() - 1;
           if (nm_position_delta !=0) DPrograms->setDP(nm_menu_position);
           else nm_menu_position = DPrograms->getDP();
           nm_drawPrograms(DPrograms);
-          break;
-        case 7:
+        break;
+        case MENU_1_STATUS:// status
           nm_menu_max = 1;
           nm_drawStatus();
-          break;
-        case 8:
+        break;
+        case MENU_1_SENSORS: //czujniki
+          
           nm_menu_max = Sensors_cnt-1;
           nm_drawSensors();
-          break;
-        case 9:
+        break;
+        case MENU_1_MMENU: //menu główne
           nm_menu_level = 0;
           nm_menu_redraw = true;
-          break;
+        break;
         default:
-          break;
+        break;
       }
       canvas.pushSprite(0,0);
 }
@@ -785,19 +768,19 @@ void drawMenu3_11(long selector){
       
       canvas.drawString(menu_11_labels_1[selector], 120, 80);     
         switch (selector){
-        case 0:
+        case 0: //temperatura program 1
           nm_drawProgramTempGauge(menu_11_labels_1[selector],1);
           break;
-        case 1:
+        case 1: //temperatura program 2
           nm_drawProgramTempGauge(menu_11_labels_1[selector],2);
           break;
-        case 2:
+        case 2: //temperatura program 3
           nm_drawProgramTempGauge(menu_11_labels_1[selector],3);
            break;  
-        case 3:
+        case 3: //temperatura program 4
           nm_drawProgramTempGauge(menu_11_labels_1[selector],4);
           break;
-        case 4:
+        case 4: //previous menu
           nm_menu_end = 2;
           nm_menu_level = 1;
           nm_menu_position = nm_prev_menu[1];
@@ -818,14 +801,14 @@ void drawMenu3_12(long selector){
       
       canvas.drawString(menu_12_labels_1[selector], 120, 80);     
         switch (selector){
-        case 0:
+        case 0: //timer on/off
           nm_menu_max = 1;
           if (nm_position_delta !=0) 
             if (M5Dial_hvac->isCountdownEnabled()) M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET, 0);
             else M5Dial_hvac->applyNewRuntimeSettings(SUPLA_HVAC_MODE_NOT_SET,tht_timer_temp, INT16_MIN, tht_timer_time * 60);
           nm_drawOnOffGauge(M5Dial_hvac->isCountdownEnabled());
           break;
-        case 1:
+        case 1: //czas timera - minuty 
           nm_menu_max  = 0;
           
           if (nm_position_delta > 0) tht_timer_time += 15;
@@ -833,12 +816,15 @@ void drawMenu3_12(long selector){
           
           if (tht_timer_time < 0) tht_timer_time = 0;
           
-          if (cfg && (nm_position_delta != 0))
+          if (cfg && (nm_position_delta != 0)) {
+
               cfg->setUInt32(HVAC_T_TIME, tht_timer_time);
+              cfg->saveWithDelay(5000);
+          }
 
           nm_drawScaleGauge("TIMER", "minuty", tht_timer_time, 0, 1440);
           break;
-        case 2:
+        case 2: //temperatura timera
           nm_menu_max  = 0;
           
           if (nm_position_delta > 0) tht_timer_temp += 50;
@@ -846,12 +832,14 @@ void drawMenu3_12(long selector){
           
           if (tht_timer_temp < 0) tht_timer_temp = 0;
           
-          if (cfg && (nm_position_delta != 0))
+          if (cfg && (nm_position_delta != 0)) {
               cfg->setUInt32(HVAC_T_TEMP, tht_timer_temp);
+              cfg->saveWithDelay(5000);
+          }
 
-          nm_drawTempScaleGauge("TIMER", tht_timer_temp, M5Dial_hvac->getDefaultTemperatureRoomMin(),M5Dial_hvac->getDefaultTemperatureRoomMax());
+          nm_drawTempScaleGauge("TIMER", tht_timer_temp, M5Dial_hvac->getTemperatureRoomMin(),M5Dial_hvac->getTemperatureRoomMax());
            break;  
-        case 3:
+        case 3: //previous menu
           nm_menu_end = 2;
           nm_menu_level = 1;
           nm_menu_position = nm_prev_menu[1];
@@ -863,6 +851,178 @@ void drawMenu3_12(long selector){
       canvas.pushSprite(0,0);
 }
 
+void drawMenu3_13(long selector){
+
+      
+      canvas.setTextColor(TFT_WHITE); 
+      canvas.fillCircle(120,120,100,TFT_NAVY); 
+      
+      canvas.drawString(menu_13_labels_1[selector], 120, 80);     
+      
+      switch (selector) {
+
+        case MENU_13_HIST: //histeresis
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) 
+            M5Dial_hvac->setTemperatureHisteresis(M5Dial_hvac->getTemperatureHisteresis() + 10);
+          if (nm_position_delta < 0) 
+            M5Dial_hvac->setTemperatureHisteresis(M5Dial_hvac->getTemperatureHisteresis() - 10);
+
+          nm_drawTempScaleGauge("HISTEREZA",M5Dial_hvac->getTemperatureHisteresis(),M5Dial_hvac->getTemperatureHisteresisMin(), M5Dial_hvac->getTemperatureHisteresisMax());
+        break;
+        
+        case MENU_13_TEMPMIN: //min room temperature 
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) 
+             M5Dial_hvac->setTemperatureRoomMin(M5Dial_hvac->getTemperatureRoomMin() + 50);
+          if (nm_position_delta < 0) 
+            M5Dial_hvac->setTemperatureRoomMin(M5Dial_hvac->getTemperatureRoomMin() - 50);
+
+          nm_drawTempScaleGauge("MIN. TEMP.", M5Dial_hvac->getTemperatureRoomMin(), 0, 10000);
+          break;
+        
+        case MENU_13_TEMPMAX: //max room temperature
+          nm_menu_max  = 0; 
+
+          if (nm_position_delta > 0) //SUPLA_CHANNELFNC_HVAC_THERMOSTAT
+            M5Dial_hvac->setTemperatureRoomMax(M5Dial_hvac->getTemperatureRoomMax() + 50);
+          if (nm_position_delta < 0) //SUPLA_CHANNELFNC_HVAC_THERMOSTAT
+            M5Dial_hvac->setTemperatureRoomMax(M5Dial_hvac->getTemperatureRoomMax() - 50);
+            
+          nm_drawTempScaleGauge("MAX. TEMP.", M5Dial_hvac->getTemperatureRoomMax(), 0, 10000);
+        break;
+        case MENU_13_HISTMIN: //min room temperature 
+          nm_menu_max  = 0;
+
+          if (nm_position_delta > 0) 
+            M5Dial_hvac->setTemperatureHisteresisMin(M5Dial_hvac->getTemperatureHisteresisMin() + 10);
+          if (nm_position_delta < 0) 
+            M5Dial_hvac->setTemperatureHisteresisMin(M5Dial_hvac->getTemperatureHisteresisMin() - 10);
+
+          nm_drawTempScaleGauge("MIN. HIST.", M5Dial_hvac->getTemperatureHisteresisMin(), 0, 5000);
+          break;
+        
+        case MENU_13_HISTMAX: //max room temperature
+          nm_menu_max  = 0; 
+
+          if (nm_position_delta > 0) 
+            M5Dial_hvac->setTemperatureHisteresisMax(M5Dial_hvac->getTemperatureHisteresisMax() + 10);
+          if (nm_position_delta < 0) 
+            M5Dial_hvac->setTemperatureHisteresisMax(M5Dial_hvac->getTemperatureHisteresisMax() - 10);
+
+          nm_drawTempScaleGauge("MAX. HIST.", M5Dial_hvac->getTemperatureHisteresisMax(), 0, 5000);
+        break;
+        case MENU_13_TSSM: //TemperatureSetpointChangeSwitchesToManualMode
+          nm_menu_max = 1;
+          
+          if (nm_position_delta !=0) 
+            M5Dial_hvac->setTemperatureSetpointChangeSwitchesToManualMode(!M5Dial_hvac->isTemperatureSetpointChangeSwitchesToManualMode()); 
+          
+          nm_drawOnOffGauge(M5Dial_hvac->isTemperatureSetpointChangeSwitchesToManualMode());
+        break;
+        case MENU_13_AFRAOH: //AntiFreezeAndHeatProtectionEnabled 
+          nm_menu_max = 1;
+          
+          if (nm_position_delta !=0) 
+            M5Dial_hvac->setAntiFreezeAndHeatProtectionEnabled(!M5Dial_hvac->isAntiFreezeAndHeatProtectionEnabled()); 
+          
+          nm_drawOnOffGauge(M5Dial_hvac->isAntiFreezeAndHeatProtectionEnabled());
+        break;
+        case MENU_13_TEMPAFR: //anti-freeze temperature 
+          nm_menu_max  = 0;
+
+          if (M5Dial_hvac->getTemperatureFreezeProtection() == INT16_MIN)
+            M5Dial_hvac->setTemperatureFreezeProtection(M5Dial_hvac->getTemperatureRoomMin());
+
+          if (nm_position_delta > 0) 
+            M5Dial_hvac->setTemperatureFreezeProtection(M5Dial_hvac->getTemperatureFreezeProtection() + 50);
+          if (nm_position_delta < 0) 
+            M5Dial_hvac->setTemperatureFreezeProtection(M5Dial_hvac->getTemperatureFreezeProtection() - 50);
+
+          nm_drawTempScaleGauge("TEMP. P-ZAMARZ.", M5Dial_hvac->getTemperatureFreezeProtection(), M5Dial_hvac->getTemperatureRoomMin(), M5Dial_hvac->getTemperatureRoomMax());
+          break;
+        
+        case MENU_13_TEMPAOH: //anti-overheat temperature
+          nm_menu_max  = 0; 
+
+          if (M5Dial_hvac->getTemperatureHeatProtection() == INT16_MIN)
+            M5Dial_hvac->setTemperatureHeatProtection(M5Dial_hvac->getTemperatureRoomMax());
+
+          if (nm_position_delta > 0) 
+            M5Dial_hvac->setTemperatureHeatProtection(M5Dial_hvac->getTemperatureHeatProtection() + 50);
+          if (nm_position_delta < 0) 
+            M5Dial_hvac->setTemperatureHeatProtection(M5Dial_hvac->getTemperatureHeatProtection() - 50);
+
+          nm_drawTempScaleGauge("TEMP. P-PRZEGRZ.", M5Dial_hvac->getTemperatureHeatProtection(), M5Dial_hvac->getTemperatureRoomMin(), M5Dial_hvac->getTemperatureRoomMax());
+        break;
+        case MENU_13_MINON: //minOnTime
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) M5Dial_hvac->setMinOnTimeS(M5Dial_hvac->getMinOnTimeS()  + 10);
+          if (nm_position_delta < 0) M5Dial_hvac->setMinOnTimeS(M5Dial_hvac->getMinOnTimeS()  - 10);
+          
+          
+          nm_drawScaleGauge("MIN. ON", "sekundy",M5Dial_hvac->getMinOnTimeS(), 0,  600);
+        break;
+        case MENU_13_MINOFF: //minOFFTime
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) M5Dial_hvac->setMinOffTimeS(M5Dial_hvac->getMinOffTimeS()  + 10);
+          if (nm_position_delta < 0) M5Dial_hvac->setMinOffTimeS(M5Dial_hvac->getMinOffTimeS()  - 10);
+          
+          
+          nm_drawScaleGauge("MIN. OFF", "sekundy",M5Dial_hvac->getMinOffTimeS(), 0,  600);
+        break;       
+        case MENU_13_MENUUP: //previous menu
+          nm_menu_end       = 2;
+          nm_menu_level     = 1;
+          nm_menu_position  = nm_prev_menu[1];
+          nm_menu_redraw    = true;
+        break;
+        
+        default:
+        break;
+      }
+
+      if (nm_position_delta != 0) M5Dial_hvac->saveConfig();
+
+      canvas.pushSprite(0,0);
+}
+
+void drawMenu3_14(long selector){
+
+      
+      canvas.setTextColor(TFT_WHITE); 
+      canvas.fillCircle(120,120,100,TFT_NAVY); 
+      
+      canvas.drawString(menu_14_labels_1[selector], 120, 80);     
+      
+      switch (selector) {
+
+        case MENU_14_AMS: //active main screen
+          
+          nm_menu_max = 1;
+          
+          if (nm_position_delta !=0) ms_tht_change = !ms_tht_change;
+          nm_drawOnOffGauge(ms_tht_change);break;
+        break;
+               
+        case MENU_14_MENUUP: //previous menu
+          nm_menu_end       = 2;
+          nm_menu_level     = 1;
+          nm_menu_position  = nm_prev_menu[1];
+          nm_menu_redraw    = true;
+        break;
+        default:
+        break;
+      }
+      
+      canvas.pushSprite(0,0);
+}
+
+
 void nm_drawTMGauge() {
 
       
@@ -872,18 +1032,22 @@ void nm_drawTMGauge() {
         
       canvas.fillArc(120, 120, 100, 120, 0, 360, TFT_RED); 
       canvas.drawString(F("OFF"), 120, 140);
+      drawDisabledIcon(120,180, TFT_RED, TFT_WHITE);
+      
     }
     else
     if (M5Dial_hvac->isManualModeEnabled()) {
 
       canvas.fillArc(120, 120, 100, 120, 0, 360, TFT_GREEN);
       canvas.drawString(F("TRYB RĘCZNY"), 120, 140);
+      drawWrenchIcon(120,180,TFT_GREEN, TFT_NAVY);
     }
     else
     if (M5Dial_hvac->isWeeklyScheduleEnabled()) {
 
       canvas.fillArc(120, 120, 100, 120, 0, 360, TFT_GREEN);
       canvas.drawString(F("TRYB TYGODNIOWY"), 120, 140);
+      drawCalendarIcon(100,160, TFT_GREEN, TFT_NAVY);
     }
 
 }
@@ -916,7 +1080,7 @@ void nm_drawTempScaleGauge (const char* g_title, _supla_int16_t t_value, _supla_
       canvas.loadFont(SegoeUI16); //canvas.setTextSize(0.5);
       canvas.drawString(String(min_value/100)+"°C", 20, 140);
       canvas.drawString(String(max_value/100)+"°C", 220, 140);
-      canvas.loadFont(SegoeUISemiBold20);//canvas.setTextSize(1);
+      canvas.loadFont(SegoeUISemiBold20);
       canvas.drawString(String(((double)t_value)/100,1)+"°C", 120, 140);
       canvas.drawString(g_title, 120, 80);
 }
@@ -933,10 +1097,10 @@ void nm_drawScaleGauge (char *g_utitle,char *g_dtitle, _supla_int16_t t_value, _
       canvas.fillCircle(120, 120, 120, TFT_NAVY);
       canvas.fillArc(120, 120, 100, 120, 180, 180+arc, TFT_RED);
       canvas.fillArc(120, 120, 100, 120, 180+arc, 360, TFT_GREEN);
-      canvas.loadFont(SegoeUI16); //canvas.setTextSize(0.5);
+      canvas.loadFont(SegoeUI16); 
       canvas.drawNumber(min_value, 20, 140);
       canvas.drawNumber(max_value, 220, 140);
-      canvas.loadFont(SegoeUISemiBold20);//canvas.setTextSize(1);
+      canvas.loadFont(SegoeUISemiBold20);
       canvas.drawNumber(t_value, 120, 140);
       canvas.drawString(g_utitle, 120, 80);
       canvas.drawString(g_dtitle, 120, 180);
@@ -947,7 +1111,7 @@ void nm_drawStatus(){
   canvas.fillScreen(TFT_NAVY);
 
   switch (nm_menu_position){
-  case 0:
+  case 0: //wifi status
   if (wifi.isReady()) {
     canvas.setTextDatum(middle_center);
     canvas.setTextSize(1);
@@ -964,7 +1128,7 @@ void nm_drawStatus(){
     canvas.drawString(F("connection "),120,140);
     };
     break;
-  case  1:
+  case  1: //local mode
     canvas.setTextDatum(middle_center);
     canvas.setTextSize(1);
     canvas.loadFont(SegoeUISemiBold20);
@@ -972,7 +1136,6 @@ void nm_drawStatus(){
      if (local_mode) canvas.drawString(F("ON"),120,140);
      else canvas.drawString(F("OFF"),120,140);
      break;
-    
   }
 }
 
@@ -980,7 +1143,7 @@ void nm_drawSensors(){
   
   canvas.fillScreen(TFT_NAVY); 
   canvas.setTextDatum(middle_center);
-  canvas.loadFont(SegoeUI16); //canvas.setTextSize(0.7);
+  canvas.loadFont(SegoeUI16); 
   canvas.drawString(xiaomiBleDeviceMacs[nm_menu_position],120,170);
   canvas.drawString(xiaomiBleDeviceLocs[nm_menu_position],120,200);
   canvas.drawString(String(sensors_temperature[nm_menu_position]),120,20);
@@ -990,7 +1153,6 @@ void nm_drawSensors(){
   canvas.drawString(String(sensors_tick[nm_menu_position]),120,140);
   canvas.setTextSize(1);
   canvas.loadFont(SegoeUISemiBold20);
-
 }
 
 void nm_drawPrograms(Supla::Sensor::ProgDisplay *pdisplay){
@@ -1016,6 +1178,5 @@ void nm_drawProgramTempGauge(const char *g_title, int program_id) {
   if (nm_position_delta < 0) M5Dial_hvac->setProgram(program_id, program.Mode, program.SetpointTemperatureHeat - 50,false);
   if (nm_position_delta != 0) program = M5Dial_hvac->getProgramById(program_id,false);
   
-  nm_drawTempScaleGauge(g_title,program.SetpointTemperatureHeat,M5Dial_hvac->getDefaultTemperatureRoomMin(),M5Dial_hvac->getDefaultTemperatureRoomMax());
-          
+  nm_drawTempScaleGauge(g_title,program.SetpointTemperatureHeat,M5Dial_hvac->getTemperatureRoomMin(),M5Dial_hvac->getTemperatureRoomMax());         
 }
