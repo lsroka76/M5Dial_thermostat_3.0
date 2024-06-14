@@ -42,13 +42,18 @@
 #define MENU_13_MINOFF                      10
 #define MENU_13_MENUUP                      11
 
-#define MENU_14_ITEMS                       2
-#define MENU_14_ANGLE                       180
+#define MENU_14_ITEMS                       7
+#define MENU_14_ANGLE                       52
 #define MENU_14_OFFSET                      166
 #define MENU_14_POS                         MENU_1_DSTS
 
 #define MENU_14_AMS                         0
-#define MENU_14_MENUUP                      1
+#define MENU_14_CFG                         1
+#define MENU_14_RST                         2
+#define MENU_14_SST                         3
+#define MENU_14_BTI                         4
+#define MENU_14_BTW                         5
+#define MENU_14_MENUUP                      6
 
 const static char menu_1_labels_1[MENU_1_ITEMS][12] PROGMEM = { "TRYB",       "NASTAWA",      "USTAWIENIA", "OPCJE",      "NASTAWA",  "OPCJE",    "WYBÓR",      "STATUS", "CZUJNIKI", "EKRAN"};
 const static char menu_1_labels_2[MENU_1_ITEMS][12] PROGMEM = { "PRACY",      "TEMPERATURY",  "TIMERA",     "TERMOSTATU", "PROGRAMÓW","URZĄDZENIA",  "TERMOMETRU", "",       "",         "GŁÓWNY"};
@@ -119,8 +124,8 @@ const static byte menu_13_lines[MENU_13_ITEMS] PROGMEM = {  3,  3,  3,  3,  3,  
 
 //-----------------------------------------
 
-const static char menu_14_labels_1[MENU_14_ITEMS][12] PROGMEM = { "AKTYWNY",  "POPRZEDNIE"};
-const static char menu_14_labels_2[MENU_14_ITEMS][12] PROGMEM = { "EKRAN",    "MENU"};
-const static char menu_14_labels_3[MENU_14_ITEMS][12] PROGMEM = { "GŁÓWNY",   ""};
+const static char menu_14_labels_1[MENU_14_ITEMS][12] PROGMEM = { "AKTYWNY",  "TRYB",     "RESTART",  "CZAS",       "BT SCAN",  "BT SCAN",  "POPRZEDNIE"};
+const static char menu_14_labels_2[MENU_14_ITEMS][12] PROGMEM = { "EKRAN",    "KONFIGU-", "",         "WYGASZACZA", "INTERVAL", "WINDOW",   "MENU"};
+const static char menu_14_labels_3[MENU_14_ITEMS][12] PROGMEM = { "GŁÓWNY",   "RACYJNY",  "",         "EKRANU",     "TIME",     "TIME",     ""};
 
-const static byte menu_14_lines[MENU_14_ITEMS] PROGMEM = {  3,  2 };
+const static byte menu_14_lines[MENU_14_ITEMS] PROGMEM = {  3,  3,  1,  3,  3,  3,  2 };

@@ -35,15 +35,20 @@
 #include "OCRAExtended16.h"
 #include "menus.h"
 
-#include "NimBLEDevice.h"
+#include <NimBLEDevice.h>
 #if !CONFIG_BT_NIMBLE_EXT_ADV
 #  error Must enable extended advertising, see nimconfig.h file.
 #endif
 
 #include "encoder_pcnt.h"
 
-#define BT_SCAN_INTERVAL  120
-#define BT_SCAN_TIME      4
+#define DEFAULT_SS_SCAN_INTERVAL      120
+#define DEFAULT_BT_SCAN_INTERVAL      97
+#define DEFAULT_BT_SCAN_WINDOW        37
+#define DEFAULT_SCREEN_SAVER_INTERVAL 30
+
+#define SHT3X_MIN_TEMPERATURE         -400
+#define SHT3X_MAX_TEMPERATURE         1250
 
 #undef USE_HARDCODED_DATA
 #define USE_HARDCODED_DATA
@@ -81,14 +86,19 @@ int32_t                                   Sensors_cnt = 0;
 
 bool                                      local_mode = true;
 
-long                                      screen_saver_time;
-long                                      btScanInterval;
-long                                      timer_time;
+int32_t                                   ScreenSaverTimer    = 0;
+int32_t                                   ssScanIntervalTimer = 0;
+int32_t                                   ssScanInterval      = DEFAULT_SS_SCAN_INTERVAL;
+int32_t                                   btScanInterval      = DEFAULT_BT_SCAN_INTERVAL;
+int32_t                                   btScanWindow        = DEFAULT_BT_SCAN_WINDOW;
+int32_t                                   ScreenSaverInterval = DEFAULT_SCREEN_SAVER_INTERVAL; 
+int32_t                                   MenuRedrawTimer     = 0;
 
 //end of Supla section
 
 NimBLEScan                                *pBLEScan;
 NimBLEClient                              *pClient;
+
 
 static constexpr const char* const week_days[7] = { "ND", "PN", "WT", "ŚR", "CZ", "PT", "SB"};
 
@@ -125,8 +135,13 @@ const static char   *XIAOMI_PARAMS[] PROGMEM = {
 const static char   *LOCS_PARAMS[] PROGMEM = {
   "loc#1", "loc#2", "loc#3", "loc#4", "loc#5", "loc#6", "loc#7", "loc#8", "loc#9" };
 
-const static char   HVAC_T_TIME [] PROGMEM = "Hvac_T_time";
-const static char   HVAC_T_TEMP [] PROGMEM = "Hvac_T_temp";
+const static char   HVAC_T_TIME []  PROGMEM = "Hvac_T_time";
+const static char   HVAC_T_TEMP []  PROGMEM = "Hvac_T_temp";
+
+const static char   BT_SCAN_INTERVAL_PARAM [] PROGMEM = "BT_scan_interval";
+const static char   BT_SCAN_WINDOW_PARAM []     PROGMEM = "BT_scan_window";
+
+const static char   SCRS_INTERVAL_PARAM []     PROGMEM = "scrs_interval";
 
 #ifdef USE_HARDCODED_DATA
 
@@ -276,10 +291,13 @@ void setup() {
       cfg->getString(LOCS_PARAMS[j],xiaomiBleDeviceLocs[j],31);
     }
 
-    uint32_t t_timer_tmp;
+    uint32_t t_param_tmp;
 
-    if (cfg->getUInt32(HVAC_T_TIME, &t_timer_tmp)) tht_timer_time = (time_t)t_timer_tmp;
-    if (cfg->getUInt32(HVAC_T_TEMP, &t_timer_tmp)) tht_timer_temp  = t_timer_tmp;
+    if (cfg->getUInt32(HVAC_T_TIME, &t_param_tmp)) tht_timer_time = (time_t)t_param_tmp;
+    if (cfg->getUInt32(HVAC_T_TEMP, &t_param_tmp)) tht_timer_temp  = t_param_tmp;
+    if (cfg->getUInt32(BT_SCAN_INTERVAL_PARAM, &t_param_tmp)) btScanInterval  = t_param_tmp;
+    if (cfg->getUInt32(BT_SCAN_WINDOW_PARAM, &t_param_tmp)) btScanWindow = t_param_tmp;
+    if (cfg->getUInt32(SCRS_INTERVAL_PARAM, &t_param_tmp)) ScreenSaverInterval = t_param_tmp;
 }
   
   for (int i = 0; i < Sensors_cnt; i++) {
@@ -299,8 +317,8 @@ void setup() {
   // Set the callback for when devices are discovered, no duplicates.
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), false);
   pBLEScan->setActiveScan(true); // Set active scanning, this will get more data from the advertiser.
-  pBLEScan->setInterval(97); // How often the scan occurs / switches channels; in milliseconds,
-  pBLEScan->setWindow(37);  // How long to scan during the interval; in milliseconds.
+  pBLEScan->setInterval(btScanInterval); // How often the scan occurs / switches channels; in milliseconds,
+  pBLEScan->setWindow(btScanWindow);  // How long to scan during the interval; in milliseconds.
   pBLEScan->setMaxResults(0); // do not store the scan results, use callback only.
   
   auto output = new Supla::Control::InternalPinOutput(THT_OUTPUT_PIN);
@@ -372,9 +390,9 @@ void setup() {
   canvas.setTextSize(1);
   canvas.pushSprite(0,0);
 
-  screen_saver_time = millis();
-  btScanInterval    = millis();
-  timer_time        = millis();
+  ScreenSaverTimer    = millis();
+  ssScanIntervalTimer = millis();
+  MenuRedrawTimer     = millis();
 }
 
 
@@ -404,9 +422,9 @@ void loop() {
     }
   
 
-  if ((millis() - btScanInterval) > (BT_SCAN_INTERVAL * 1000)) {
+  if ((millis() - ssScanIntervalTimer) > (ssScanInterval * 1000)) {
      
-    btScanInterval = millis();
+    ssScanIntervalTimer = millis();
 
     for (int i = 0; i < Sensors_cnt; i++) {
       xiaomiSensors[i]->setTemp(sensors_temperature[i]);
@@ -417,9 +435,9 @@ void loop() {
     nm_menu_redraw = true;
   }
 
-  if (M5Dial_hvac->isCountdownEnabled()&&((millis() - timer_time) > 1000)) {
+  if (M5Dial_hvac->isCountdownEnabled()&&((millis() - MenuRedrawTimer) > 1000)) {
 
-    timer_time      = millis();
+    MenuRedrawTimer = millis();
     nm_menu_redraw  = true;
   }
   
@@ -437,7 +455,7 @@ if(pBLEScan->isScanning() == false) {
     
     //if ((t.state == m5::touch_state_t::touch_end)||(t.state == m5::touch_state_t::touch_end)){
       
-      screen_saver_time = millis();
+      ScreenSaverTimer = millis();
       
       if (screen_saver_on) {
         screen_saver_on = false;
@@ -446,8 +464,8 @@ if(pBLEScan->isScanning() == false) {
     //}
   }
 
-  if (!screen_saver_on) {
-    if (millis()-screen_saver_time > 30000) screen_saver_on = true;
+  if ((ScreenSaverInterval > 0) && (!screen_saver_on)) {
+    if (millis() - ScreenSaverTimer > (ScreenSaverInterval * 1000)) screen_saver_on = true;
   }
 
   if (M5Dial.BtnA.wasReleaseFor(15000)) {
@@ -470,7 +488,7 @@ if(pBLEScan->isScanning() == false) {
     if (M5Dial.BtnA.wasReleased()){
 
       screen_saver_on   = false;
-      screen_saver_time = millis();
+      ScreenSaverTimer  = millis();
 
       if (nm_menu_level == nm_menu_end){
 
@@ -500,8 +518,8 @@ if(pBLEScan->isScanning() == false) {
 
     if (nm_position_delta != 0){
     
-      screen_saver_on = false;
-      screen_saver_time = millis();
+      screen_saver_on   = false;
+      ScreenSaverTimer  = millis();
       
       nm_old_position = nm_new_position;
       nm_new_position = nm_new_position + nm_position_delta;
@@ -993,7 +1011,8 @@ void drawMenu3_13(long selector){
 
 void drawMenu3_14(long selector){
 
-      
+      auto cfg = Supla::Storage::ConfigInstance();
+
       canvas.setTextColor(TFT_WHITE); 
       canvas.fillCircle(120,120,100,TFT_NAVY); 
       
@@ -1008,7 +1027,69 @@ void drawMenu3_14(long selector){
           if (nm_position_delta !=0) ms_tht_change = !ms_tht_change;
           nm_drawOnOffGauge(ms_tht_change);break;
         break;
-               
+        case MENU_14_CFG: //config mode
+          screen_saver_on = false;
+          nm_config_mode  = true;
+          nm_menu_redraw  = true;
+
+          SuplaDevice.enterConfigMode();
+        break;
+        case MENU_14_RST: //restart
+          SuplaDevice.softRestart();
+        break;             
+        case MENU_14_SST: //screen saver time
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) ScreenSaverInterval += 15;
+          if (nm_position_delta < 0) ScreenSaverInterval -= 15;
+          
+          if (ScreenSaverInterval < 0) ScreenSaverInterval = 0;
+          
+          if (cfg && (nm_position_delta != 0)) {
+
+              cfg->setUInt32(SCRS_INTERVAL_PARAM, ScreenSaverInterval);
+              cfg->saveWithDelay(5000);
+          }
+
+          nm_drawScaleGauge("WYGASZACZ", "sekundy", ScreenSaverInterval, 0, 600);
+                   
+        break;
+        case MENU_14_BTI: //screen saver time
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) btScanInterval += 15;
+          if (nm_position_delta < 0) btScanInterval -= 15;
+          
+          if (btScanInterval < 0) btScanInterval = 0;
+          
+          pBLEScan->setInterval(btScanInterval);
+
+          if (cfg && (nm_position_delta != 0)) {
+
+              cfg->setUInt32(BT_SCAN_INTERVAL_PARAM, btScanInterval);
+              cfg->saveWithDelay(5000);
+          }
+
+          nm_drawScaleGauge("BTI", "milisekundy", btScanInterval, 0, 600);
+                   
+        break;
+        case MENU_14_BTW: //screen saver time
+          nm_menu_max  = 0;
+          
+          if (nm_position_delta > 0) btScanWindow += 15;
+          if (nm_position_delta < 0) btScanWindow -= 15;
+          
+          if (btScanWindow < 0) btScanWindow = 0;
+          
+          if (cfg && (nm_position_delta != 0)) {
+
+              cfg->setUInt32(BT_SCAN_WINDOW_PARAM, btScanWindow);
+              cfg->saveWithDelay(5000);
+          }
+
+          nm_drawScaleGauge("BTW", "milisekundy", btScanWindow, 0, 600);
+                   
+        break;
         case MENU_14_MENUUP: //previous menu
           nm_menu_end       = 2;
           nm_menu_level     = 1;
@@ -1018,7 +1099,7 @@ void drawMenu3_14(long selector){
         default:
         break;
       }
-      
+
       canvas.pushSprite(0,0);
 }
 
