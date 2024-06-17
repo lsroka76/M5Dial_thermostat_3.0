@@ -1064,6 +1064,7 @@ void drawMenu3_14(long selector){
 
               if (btScanInterval < 0) btScanInterval = 0;
               if (btScanInterval > 1200) btScanInterval = 1200;
+              if (btScanWindow > btScanInterval) btScanInterval = btScanWindow;
 
               pBLEScan->setInterval(btScanInterval);
 
