@@ -1059,18 +1059,19 @@ void drawMenu3_14(long selector){
           
           if (nm_position_delta > 0) btScanInterval += 15;
           if (nm_position_delta < 0) btScanInterval -= 15;
-          
-          if (btScanInterval < 0) btScanInterval = 0;
-          
-          pBLEScan->setInterval(btScanInterval);
 
           if (cfg && (nm_position_delta != 0)) {
+
+              if (btScanInterval < 0) btScanInterval = 0;
+              if (btScanInterval > 1200) btScanInterval = 1200;
+
+              pBLEScan->setInterval(btScanInterval);
 
               cfg->setUInt32(BT_SCAN_INTERVAL_PARAM, btScanInterval);
               cfg->saveWithDelay(5000);
           }
 
-          nm_drawScaleGauge("BTI", "milisekundy", btScanInterval, 0, 600);
+          nm_drawScaleGauge("BTI", "milisekundy", btScanInterval, 0, 1200);
                    
         break;
         case MENU_14_BTW: //screen saver time
@@ -1079,17 +1080,20 @@ void drawMenu3_14(long selector){
           if (nm_position_delta > 0) btScanWindow += 15;
           if (nm_position_delta < 0) btScanWindow -= 15;
           
-          if (btScanWindow < 0) btScanWindow = 0;
-          
           if (cfg && (nm_position_delta != 0)) {
+
+              if (btScanWindow < 0) btScanWindow = 0;
+              if (btScanWindow > btScanInterval) btScanWindow = btScanInterval;
+
+              pBLEScan->setWindow(btScanWindow);
 
               cfg->setUInt32(BT_SCAN_WINDOW_PARAM, btScanWindow);
               cfg->saveWithDelay(5000);
           }
 
-          nm_drawScaleGauge("BTW", "milisekundy", btScanWindow, 0, 600);
+          nm_drawScaleGauge("BTW", "milisekundy", btScanWindow, 0, btScanInterval);
                    
-        break;
+        break; 
         case MENU_14_MENUUP: //previous menu
           nm_menu_end       = 2;
           nm_menu_level     = 1;
